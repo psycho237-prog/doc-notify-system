@@ -4,7 +4,7 @@ require('dotenv').config();
 const SMSTO_API_URL = 'https://api.sms.to/sms/send';
 const API_KEY = process.env.SMSTO_API_KEY;
 
-const sendSMS = async (to, message) => {
+const sendSMS = async (to, message, gatewayId = null) => {
     if (API_KEY === 'your_actual_api_key_here' || !API_KEY) {
         console.warn('SMS.to API Key not configured. Mocking SMS send for:', to);
         return { success: true, message: 'Mocked SMS sent successfully' };
@@ -16,7 +16,11 @@ const sendSMS = async (to, message) => {
         message: message
     };
 
-    console.log(`Sending SMS to ${to} via ${SMSTO_API_URL}`);
+    if (gatewayId) {
+        payload.gateway_id = gatewayId;
+    }
+
+    console.log(`Sending SMS to ${to} via ${SMSTO_API_URL}${gatewayId ? ' (Gateway: ' + gatewayId + ')' : ''}`);
     console.log(`Payload: ${JSON.stringify(payload)}`);
 
     try {

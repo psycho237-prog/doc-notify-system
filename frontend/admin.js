@@ -4,6 +4,19 @@ import axios from 'axios';
 const API_URL = 'http://localhost:3000/api';
 const DEFAULT_MESSAGE = "Hello [Name], your [DocType] is ready for collection. Please visit our office.";
 
+const templateInput = document.getElementById('messageTemplate');
+const gatewayInput = document.getElementById('gatewayId');
+
+// Handle Persistence
+if (templateInput) {
+    templateInput.value = localStorage.getItem('sms_template') || DEFAULT_MESSAGE;
+    templateInput.addEventListener('input', (e) => localStorage.setItem('sms_template', e.target.value));
+}
+if (gatewayInput) {
+    gatewayInput.value = localStorage.getItem('gateway_id') || '';
+    gatewayInput.addEventListener('input', (e) => localStorage.setItem('gateway_id', e.target.value));
+}
+
 const fetchStats = async () => {
     try {
         const { data } = await axios.get(`${API_URL}/stats`);
@@ -17,23 +30,22 @@ const fetchStats = async () => {
 
 const fetchRegistrations = async () => {
     try {
-        const { data } = await axios.get(`${API_URL}/registrations/all`); // Show all for admin by default
+        const { data } = await axios.get(`${API_URL}/registrations/all`);
         const tbody = document.getElementById('userTableBody');
         tbody.innerHTML = '';
-        window.currentData = data; // Store for export
+        window.currentData = data;
 
         data.forEach(user => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>${user.name}</td>
-                <td>${user.phone_number}</td>
+                <td style="font-family: monospace;">${user.phone_number}</td>
                 <td>${user.document_type}</td>
-                <td>${user.network_provider || 'N/A'}</td>
                 <td><span class="badge badge-${user.status}">${user.status}</span></td>
                 <td>
                     <button class="action-btn" ${user.status === 'ready' ? 'disabled' : ''} 
-                        onclick="window.notifyUser(${user.id}, '${user.document_type}')">
-                        Notify Ready
+                        onclick="window.notifyUser(${user.id}, '${user.name}', '${user.document_type}')">
+                        Notify
                     </button>
                 </td>
             `;
@@ -61,23 +73,26 @@ window.exportCSV = () => {
     document.body.removeChild(link);
 };
 
-window.notifyUser = async (userId, docType) => {
-    const message = DEFAULT_MESSAGE.replace('[DocType]', docType);
+window.notifyUser = async (userId, userName, docType) => {
+    const template = templateInput.value || DEFAULT_MESSAGE;
+    const gatewayId = gatewayInput.value || null;
+    const message = template
+        .replace('[Name]', userName)
+        .replace('[DocType]', docType);
+
     const btn = event.target;
     const originalText = btn.textContent;
-    btn.textContent = 'Sending...';
+    btn.textContent = '...';
     btn.disabled = true;
 
     try {
-        await axios.post(`${API_URL}/notify`, { userId, message });
-        alert('Notification sent successfully!');
+        await axios.post(`${API_URL}/notify`, { userId, message, gatewayId });
+        alert('Sent!');
         fetchStats();
         fetchRegistrations();
     } catch (error) {
         console.error('Notification error:', error);
-        const errorMsg = error.response && error.response.data && error.response.data.error
-            ? error.response.data.error
-            : 'Failed to send notification.';
+        const errorMsg = error.response?.data?.error || 'Failed to send.';
         alert(`Error: ${errorMsg}`);
         btn.textContent = originalText;
         btn.disabled = false;

@@ -101,12 +101,12 @@ app.get('/api/registrations/today', async (req, res) => {
 
 // Notify User Endpoint
 app.post('/api/notify', async (req, res) => {
-    const { userId, message } = req.body;
+    const { userId, message, gatewayId } = req.body;
     try {
         const user = await db.get('SELECT * FROM users WHERE id = ?', [userId]);
         if (!user) return res.status(404).json({ error: 'User not found' });
 
-        const result = await sendSMS(user.phone_number, message.replace('[Name]', user.name));
+        const result = await sendSMS(user.phone_number, message, gatewayId);
 
         await db.run(
             'UPDATE users SET status = "ready", notified_at = ? WHERE id = ?',

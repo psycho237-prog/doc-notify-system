@@ -9,151 +9,109 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./style.css">
-    <style>
-        .admin-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            width: 100%;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .stat-card {
-            background: var(--glass);
-            border: 1px solid var(--glass-border);
-            padding: 1.5rem;
-            border-radius: 16px;
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 800;
-            color: var(--primary);
-        }
-
-        .stat-label {
-            font-size: 0.875rem;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        th,
-        td {
-            text-align: left;
-            padding: 1rem;
-            border-bottom: 1px solid var(--glass-border);
-        }
-
-        th {
-            background: rgba(255, 255, 255, 0.05);
-            font-weight: 600;
-            color: white;
-        }
-
-        tr:hover {
-            background: rgba(255, 255, 255, 0.02);
-        }
-
-        .badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 999px;
-            font-size: 0.75rem;
-            font-weight: 600;
-        }
-
-        .badge-pending {
-            background: rgba(249, 115, 22, 0.2);
-            color: #f97316;
-        }
-
-        .badge-ready {
-            background: rgba(16, 185, 129, 0.2);
-            color: #10b981;
-        }
-
-        .action-btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 0.875rem;
-            transition: opacity 0.2s;
-        }
-
-        .action-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-    </style>
 </head>
 
 <body>
-    <div id="app">
-        <div class="admin-container">
-            <h1>Admin Dashboard</h1>
-            <p class="subtitle">Manage document registrations and send notifications.</p>
+    <div class="app-shell">
+        <!-- Sidebar for Desktop -->
+        <aside class="sidebar">
+            <h2 style="font-size: 1.5rem; margin-bottom: 2rem;">DocNotify</h2>
+            <nav>
+                <a href="/index.html" class="nav-item">
+                    <span>Register</span>
+                </a>
+                <a href="/admin.html" class="nav-item active">
+                    <span>Dashboard</span>
+                </a>
+            </nav>
+        </aside>
 
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <div class="stat-value" id="statTotal">0</div>
-                    <div class="stat-label">Total Registered</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="statPending" style="color: var(--accent)">0</div>
-                    <div class="stat-label">Pending</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value" id="statReady" style="color: var(--secondary)">0</div>
-                    <div class="stat-label">Ready</div>
-                </div>
-            </div>
+        <!-- Main Content -->
+        <main class="main-content">
+            <div id="app">
+                <div class="admin-container">
+                    <h1>Admin Dashboard</h1>
+                    <p class="subtitle">Manage registrations and customize notifications.</p>
 
-            <div class="card" style="padding: 1.5rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <h2 style="margin: 0; font-size: 1.25rem;">Recent Registrations</h2>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button onclick="window.exportCSV()"
-                            style="width: auto; padding: 0.5rem 1rem; background: var(--secondary);">Export CSV</button>
-                        <button onclick="window.location.reload()"
-                            style="width: auto; padding: 0.5rem 1rem;">Refresh</button>
+                    <div class="stats-row">
+                        <div class="stat-box">
+                            <div class="value" id="statTotal">0</div>
+                            <div class="label">Total</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="value" id="statPending" style="color: var(--accent)">0</div>
+                            <div class="label">Pending</div>
+                        </div>
+                        <div class="stat-box">
+                            <div class="value" id="statReady" style="color: var(--secondary)">0</div>
+                            <div class="label">Ready</div>
+                        </div>
+                    </div>
+
+                    <!-- Settings & Message Template Section -->
+                    <div class="card">
+                        <h2 style="margin-top: 0; font-size: 1.1rem; margin-bottom: 1rem;">Service Settings</h2>
+
+                        <div class="form-group">
+                            <label for="gatewayId">Android Gateway ID (Optional)</label>
+                            <input type="text" id="gatewayId" placeholder="e.g. 12345" />
+                            <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.3rem;">
+                                Leave empty to use SMS.to direct API. Provide an ID to use your Android SMS Gateway.
+                            </p>
+                        </div>
+
+                        <div class="form-group" style="margin-top: 1.5rem;">
+                            <label for="messageTemplate">Message Template</label>
+                            <textarea id="messageTemplate" rows="3" placeholder="Enter message template..."></textarea>
+                            <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.3rem;">
+                                Use <b>[Name]</b> and <b>[DocType]</b> as placeholders.
+                            </p>
+                        </div>
                     </div>
                 </div>
-                <div style="overflow-x: auto;">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Name</th>
-                                <th>Phone</th>
-                                <th>Document</th>
-                                <th>Provider</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="userTableBody">
-                            <!-- Rows will be populated by JS -->
-                        </tbody>
-                    </table>
+
+                <div class="card" style="padding: 1.5rem;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h2 style="margin: 0; font-size: 1.1rem;">Registrations</h2>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button onclick="window.exportCSV()"
+                                style="width: auto; padding: 0.5rem 1rem; background: var(--secondary);">Export</button>
+                            <button onclick="window.location.reload()"
+                                style="width: auto; padding: 0.5rem 1rem;">Refresh</button>
+                        </div>
+                    </div>
+
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Phone</th>
+                                    <th>Document</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="userTableBody">
+                                <!-- Rows populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-        </div>
+    </div>
+    </main>
+
+    <!-- Bottom Nav for Mobile -->
+    <nav class="bottom-nav">
+        <a href="/index.html" class="nav-item">
+            <span>Register</span>
+        </a>
+        <a href="/admin.html" class="nav-item active">
+            <span>Dashboard</span>
+        </a>
+    </nav>
     </div>
     <script type="module" src="/admin.js"></script>
 </body>
