@@ -15,13 +15,17 @@
     <div class="app-shell">
         <!-- Sidebar for Desktop -->
         <aside class="sidebar">
-            <h2 style="font-size: 1.5rem; margin-bottom: 2rem;">DocNotify</h2>
+            <h2 data-i18n="title" style="font-size: 1.5rem; margin-bottom: 2rem;">DocNotify</h2>
+            <div class="settings-group">
+                <button id="themeToggle" class="theme-toggle">☀️</button>
+                <button id="langToggle" class="lang-toggle">EN</button>
+            </div>
             <nav>
                 <a href="/index.html" class="nav-item">
-                    <span>Register</span>
+                    <span data-i18n="register">Register</span>
                 </a>
                 <a href="/admin.html" class="nav-item active">
-                    <span>Dashboard</span>
+                    <span data-i18n="dashboard">Dashboard</span>
                 </a>
             </nav>
         </aside>
@@ -30,40 +34,42 @@
         <main class="main-content">
             <div id="app">
                 <div class="admin-container">
-                    <h1>Admin Dashboard</h1>
-                    <p class="subtitle">Manage registrations and customize notifications.</p>
+                    <h1 data-i18n="adminTitle">Admin Dashboard</h1>
+                    <p data-i18n="adminSubtitle" class="subtitle">Manage registrations and customize notifications.</p>
 
                     <div class="stats-row">
                         <div class="stat-box">
                             <div class="value" id="statTotal">0</div>
-                            <div class="label">Total</div>
+                            <div data-i18n="total" class="label">Total</div>
                         </div>
                         <div class="stat-box">
                             <div class="value" id="statPending" style="color: var(--accent)">0</div>
-                            <div class="label">Pending</div>
+                            <div data-i18n="pending" class="label">Pending</div>
                         </div>
                         <div class="stat-box">
                             <div class="value" id="statReady" style="color: var(--secondary)">0</div>
-                            <div class="label">Ready</div>
+                            <div data-i18n="ready" class="label">Ready</div>
                         </div>
                     </div>
 
                     <!-- Settings & Message Template Section -->
                     <div class="card">
-                        <h2 style="margin-top: 0; font-size: 1.1rem; margin-bottom: 1rem;">Service Settings</h2>
+                        <h2 data-i18n="serviceSettings" style="margin-top: 0; font-size: 1.1rem; margin-bottom: 1rem;">
+                            Service Settings</h2>
 
                         <div class="form-group">
-                            <label for="gatewayId">Android Gateway ID (Optional)</label>
-                            <input type="text" id="gatewayId" placeholder="e.g. 12345" />
-                            <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.3rem;">
+                            <label for="gatewayId" data-i18n="gatewayId">Android Gateway ID (Optional)</label>
+                            <input type="text" id="gatewayId" data-i18n="gatewayId" placeholder="e.g. 12345" />
+                            <p data-i18n="gatewayNote" style="font-size: 0.75rem; color: #64748b; margin-top: 0.3rem;">
                                 Leave empty to use SMS.to direct API. Provide an ID to use your Android SMS Gateway.
                             </p>
                         </div>
 
                         <div class="form-group" style="margin-top: 1.5rem;">
-                            <label for="messageTemplate">Message Template</label>
-                            <textarea id="messageTemplate" rows="3" placeholder="Enter message template..."></textarea>
-                            <p style="font-size: 0.75rem; color: #64748b; margin-top: 0.3rem;">
+                            <label for="messageTemplate" data-i18n="msgTemplate">Message Template</label>
+                            <textarea id="messageTemplate" data-i18n="msgTemplate" rows="3"
+                                placeholder="Enter message template..."></textarea>
+                            <p data-i18n="msgNote" style="font-size: 0.75rem; color: #64748b; margin-top: 0.3rem;">
                                 Use <b>[Name]</b> and <b>[DocType]</b> as placeholders.
                             </p>
                         </div>
@@ -73,11 +79,11 @@
                 <div class="card" style="padding: 1.5rem;">
                     <div
                         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                        <h2 style="margin: 0; font-size: 1.1rem;">Registrations</h2>
+                        <h2 data-i18n="registrations" style="margin: 0; font-size: 1.1rem;">Registrations</h2>
                         <div style="display: flex; gap: 0.5rem;">
-                            <button onclick="window.exportCSV()"
+                            <button onclick="window.exportCSV()" data-i18n="export"
                                 style="width: auto; padding: 0.5rem 1rem; background: var(--secondary);">Export</button>
-                            <button onclick="window.location.reload()"
+                            <button onclick="window.location.reload()" data-i18n="refresh"
                                 style="width: auto; padding: 0.5rem 1rem;">Refresh</button>
                         </div>
                     </div>
@@ -86,11 +92,11 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Name</th>
-                                    <th>Phone</th>
-                                    <th>Document</th>
-                                    <th>Status</th>
-                                    <th>Action</th>
+                                    <th data-i18n="thName">Name</th>
+                                    <th data-i18n="thPhone">Phone</th>
+                                    <th data-i18n="thDoc">Document</th>
+                                    <th data-i18n="thStatus">Status</th>
+                                    <th data-i18n="thAction">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="userTableBody">
@@ -106,11 +112,15 @@
     <!-- Bottom Nav for Mobile -->
     <nav class="bottom-nav">
         <a href="/index.html" class="nav-item">
-            <span>Register</span>
+            <span data-i18n="register">Register</span>
         </a>
         <a href="/admin.html" class="nav-item active">
-            <span>Dashboard</span>
+            <span data-i18n="dashboard">Dashboard</span>
         </a>
+        <div class="settings-group">
+            <button id="themeToggle" class="theme-toggle">☀️</button>
+            <button id="langToggle" class="lang-toggle">EN</button>
+        </div>
     </nav>
     </div>
     <script type="module" src="/admin.js"></script>

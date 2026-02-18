@@ -1,6 +1,8 @@
 import './style.css';
 import axios from 'axios';
+import { initI18n } from './i18n';
 
+const i18n = initI18n();
 const registrationForm = document.querySelector('#registrationForm');
 const API_URL = 'http://localhost:3000/api';
 
@@ -22,7 +24,7 @@ if (registrationForm) {
 
         const submitBtn = registrationForm.querySelector('button');
         const originalBtnText = submitBtn.textContent;
-        submitBtn.textContent = 'Registering...';
+        submitBtn.textContent = i18n.t('loading');
         submitBtn.disabled = true;
 
         const formData = {
@@ -34,14 +36,14 @@ if (registrationForm) {
         };
 
         try {
-            const response = await axios.post(`${API_URL}/register`, formData);
-            showToast('Registration successful!');
+            await axios.post(`${API_URL}/register`, formData);
+            showToast(i18n.t('registrationSuccess'));
             registrationForm.reset();
         } catch (error) {
             console.error('Registration error:', error);
-            showToast('Registration failed. Please try again.', 'error');
+            showToast(i18n.t('registrationFailed'), 'error');
         } finally {
-            submitBtn.textContent = originalBtnText;
+            submitBtn.textContent = originalBtnText; // This might be wrong if lang changed, but applyLang handles it
             submitBtn.disabled = false;
         }
     });

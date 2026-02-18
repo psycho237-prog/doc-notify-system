@@ -1,6 +1,8 @@
 import './style.css';
 import axios from 'axios';
+import { initI18n } from './i18n';
 
+const i18n = initI18n();
 const API_URL = 'http://localhost:3000/api';
 const DEFAULT_MESSAGE = "Hello [Name], your [DocType] is ready for collection. Please visit our office.";
 
@@ -44,8 +46,9 @@ const fetchRegistrations = async () => {
                 <td><span class="badge badge-${user.status}">${user.status}</span></td>
                 <td>
                     <button class="action-btn" ${user.status === 'ready' ? 'disabled' : ''} 
-                        onclick="window.notifyUser(${user.id}, '${user.name}', '${user.document_type}')">
-                        Notify
+                        onclick="window.notifyUser(${user.id}, '${user.name}', '${user.document_type}')"
+                        data-i18n="notify">
+                        ${i18n.t('notify')}
                     </button>
                 </td>
             `;
@@ -82,18 +85,18 @@ window.notifyUser = async (userId, userName, docType) => {
 
     const btn = event.target;
     const originalText = btn.textContent;
-    btn.textContent = '...';
+    btn.textContent = i18n.t('loading');
     btn.disabled = true;
 
     try {
         await axios.post(`${API_URL}/notify`, { userId, message, gatewayId });
-        alert('Sent!');
+        alert(i18n.t('sent'));
         fetchStats();
         fetchRegistrations();
     } catch (error) {
         console.error('Notification error:', error);
-        const errorMsg = error.response?.data?.error || 'Failed to send.';
-        alert(`Error: ${errorMsg}`);
+        const errorMsg = error.response?.data?.error || i18n.t('registrationFailed');
+        alert(`${i18n.t('error')}: ${errorMsg}`);
         btn.textContent = originalText;
         btn.disabled = false;
     }

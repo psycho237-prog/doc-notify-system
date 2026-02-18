@@ -15,15 +15,19 @@
   <div class="app-shell">
     <!-- Sidebar for Desktop -->
     <aside class="sidebar">
-      <h2 style="font-size: 1.5rem; margin-bottom: 2rem;">DocNotify</h2>
+      <h2 data-i18n="title" style="font-size: 1.5rem; margin-bottom: 2rem;">DocNotify</h2>
+      <div class="settings-group">
+        <button id="themeToggle" class="theme-toggle">☀️</button>
+        <button id="langToggle" class="lang-toggle">EN</button>
+      </div>
       <nav>
         <a href="/index.html" class="nav-item active"
           style="flex-direction: row; gap: 1rem; padding: 0.75rem 0; font-size: 1rem;">
-          <span>Register</span>
+          <span data-i18n="register">Register</span>
         </a>
         <a href="/admin.html" class="nav-item"
           style="flex-direction: row; gap: 1rem; padding: 0.75rem 0; font-size: 1rem;">
-          <span>Dashboard</span>
+          <span data-i18n="dashboard">Dashboard</span>
         </a>
       </nav>
     </aside>
@@ -32,24 +36,24 @@
     <main class="main-content">
       <div id="app">
         <div class="card">
-          <h1>DocNotify</h1>
-          <p class="subtitle">Quickly register your documents for notification.</p>
+          <h1 data-i18n="title">DocNotify</h1>
+          <p data-i18n="subtitle" class="subtitle">Quickly register your documents for notification.</p>
 
           <form id="registrationForm">
             <div class="form-group">
-              <label for="name">Full Name</label>
-              <input type="text" id="name" placeholder="John Doe" required />
+              <label for="name" data-i18n="fullName">Full Name</label>
+              <input type="text" id="name" data-i18n="fullName" placeholder="John Doe" required />
             </div>
 
             <div class="form-group">
-              <label for="phone">Phone Number</label>
+              <label for="phone" data-i18n="phoneNumber">Phone Number</label>
               <input type="tel" id="phone" placeholder="+237 6XX XXX XXX" required />
             </div>
 
             <div class="form-group">
-              <label for="docType">Document Type</label>
+              <label for="docType" data-i18n="docType">Document Type</label>
               <select id="docType" required>
-                <option value="">Select a document type</option>
+                <option value="" data-i18n="selectDoc">Select a document type</option>
                 <option value="ID Card">ID Card</option>
                 <option value="Passport">Passport</option>
                 <option value="Driver License">Driver License</option>
@@ -59,16 +63,16 @@
             </div>
 
             <div class="form-group">
-              <label for="network">Network Provider</label>
+              <label for="network" data-i18n="networkProvider">Network Provider</label>
               <select id="network" required>
-                <option value="">Select provider</option>
+                <option value="" data-i18n="selectProvider">Select provider</option>
                 <option value="MTN CM">MTN Cameroon</option>
                 <option value="ORANGE CM">Orange Cameroon</option>
                 <option value="BLUE CAMTEL">Blue (Camtel)</option>
               </select>
             </div>
 
-            <button type="submit">Register Document</button>
+            <button type="submit" data-i18n="btnRegister">Register Document</button>
           </form>
         </div>
       </div>
@@ -77,11 +81,15 @@
     <!-- Bottom Nav for Mobile -->
     <nav class="bottom-nav">
       <a href="/index.html" class="nav-item active">
-        <span>Register</span>
+        <span data-i18n="register">Register</span>
       </a>
       <a href="/admin.html" class="nav-item">
-        <span>Dashboard</span>
+        <span data-i18n="dashboard">Dashboard</span>
       </a>
+      <div class="settings-group">
+        <button id="themeToggle" class="theme-toggle">☀️</button>
+        <button id="langToggle" class="lang-toggle">EN</button>
+      </div>
     </nav>
   </div>
   <script type="module" src="/main.js"></script>
