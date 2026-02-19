@@ -61,6 +61,13 @@ npm install
 
 ### 4. Running the Application
 
+**Option A: Quick Start (Recommended)**
+Run both at once:
+```bash
+./start.sh
+```
+
+**Option B: Manual Start**
 **Start the Backend:**
 ```bash
 cd backend
