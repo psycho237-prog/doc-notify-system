@@ -2,18 +2,41 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Lock } from "lucide-react";
+import { Bell, Lock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In real app: Firebase Auth login
-    router.push("/dashboard");
+    setLoading(true);
+    setError("");
+
+    // Special case for initial setup (Mock login)
+    if (email === "admin@nnlomne.gov" && password === "password") {
+      localStorage.setItem("userRole", "admin");
+      localStorage.setItem("institutionId", "nnlomne");
+      router.push("/dashboard");
+      return;
+    }
+
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      localStorage.setItem("institutionId", "nnlomne"); // Default for now
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError("Invalid credentials. Use admin@nnlomne.gov / password for testing.");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
