@@ -45,7 +45,7 @@ export default function RecordsPage() {
                 const res = await fetch(url);
                 const data = await res.json();
                 setRecords(data.citizens || []);
-            } catch (_err) {
+            } catch (err) {
                 console.error("Records fetch error:", err);
             } finally {
                 setLoading(false);
@@ -60,7 +60,7 @@ export default function RecordsPage() {
         try {
             await fetch(`/api/citizens/${id}`, { method: 'DELETE' });
             setRecords((prev) => prev.filter(r => r.id !== id));
-        } catch (_err) {
+        } catch (err) {
             console.error("Delete error:", err);
         }
     };
@@ -75,7 +75,7 @@ export default function RecordsPage() {
             });
             const data = await res.json();
             alert(data.message || "Priority SMS notification dispatched successfully!");
-        } catch (_err) {
+        } catch {
             alert("Protocol error: SMS gateway unresponsive.");
         }
     };
