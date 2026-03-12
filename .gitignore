@@ -1,8 +1,12 @@
 node_modules/
 .env
+.env.local
+.env.*.local
 *.sqlite
 dist/
 .DS_Store
 frontend/dist/
 backend/node_modules/
 frontend/node_modules/
+frontend/.next/
+.firebase/
