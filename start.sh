@@ -17,14 +17,14 @@ trap cleanup SIGINT SIGTERM
 
 # Start Backend
 echo "📡 Starting Backend API..."
-cd backend && node index.js &
+(cd backend && node index.js) &
 
 # Wait a moment for backend to initialize
 sleep 2
 
 # Start Frontend
 echo "💻 Starting Frontend Dev Server..."
-cd ../frontend && npm run dev &
+(cd frontend && npm run dev) &
 
 # Keep script running
 wait
