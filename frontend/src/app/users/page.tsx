@@ -1,7 +1,7 @@
 "use client";
 
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Users as UsersIcon, Shield, Mail, Calendar } from "lucide-react";
+import { Shield, Mail, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const mockAdmins = [

@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import {
-    ArrowUpRight,
-    ArrowDownRight,
     Clock,
     Send,
     Loader2,
@@ -13,8 +11,22 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
+interface DashboardData {
+    totalRegistered: number;
+    processing: number;
+    ready: number;
+    smsSentToday: number;
+    recentDossiers: {
+        id: string;
+        fullName: string;
+        service: string;
+        status: string;
+        phoneNumber: string;
+    }[];
+}
+
 export default function DashboardPage() {
-    const [data, setData] = useState<any>(null);
+    const [data, setData] = useState<DashboardData | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -129,7 +141,7 @@ export default function DashboardPage() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 font-medium text-sm">
-                            {data?.recentDossiers?.map((row: any) => (
+                            {data?.recentDossiers?.map((row) => (
                                 <tr key={row.id} className="hover:bg-gray-50/50 transition-colors group">
                                     <td className="px-6 py-5 font-bold text-gray-900">{row.fullName}</td>
                                     <td className="px-6 py-5 text-gray-600">{row.service}</td>

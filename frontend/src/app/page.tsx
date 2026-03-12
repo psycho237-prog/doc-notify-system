@@ -28,10 +28,10 @@ export default function LoginPage() {
     }
 
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      await signInWithEmailAndPassword(auth, email, password);
       localStorage.setItem("institutionId", "nnlomne"); // Default for now
       router.push("/dashboard");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError("Invalid credentials. Use admin@nnlomne.gov / password for testing.");
       console.error(err);
     } finally {
@@ -90,8 +90,14 @@ export default function LoginPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full bg-[#1e3a8a] hover:bg-blue-900 text-white py-6 rounded-xl font-semibold shadow-lg transition-all active:scale-[0.98]">
-              Sign In
+            {error && (
+              <div className="p-3 mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg">
+                {error}
+              </div>
+            )}
+
+            <Button type="submit" disabled={loading} className="w-full bg-[#1e3a8a] hover:bg-blue-900 text-white py-6 rounded-xl font-semibold shadow-lg transition-all active:scale-[0.98]">
+              {loading ? "Signing in..." : "Sign In"}
             </Button>
 
             <div className="pt-4 flex items-center justify-center space-x-2 text-gray-400 text-xs border-t border-gray-100 mt-6">

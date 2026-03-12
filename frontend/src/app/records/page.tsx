@@ -6,19 +6,25 @@ import { Button } from "@/components/ui/button";
 import {
     Search,
     Download,
-    Edit,
     Bell,
     ChevronDown,
     Trash2,
     Loader2,
-    Plus,
-    X
+    Plus
 } from "lucide-react";
 import Link from "next/link";
 
+interface Citizen {
+    id: string;
+    fullName: string;
+    phoneNumber: string;
+    service: string;
+    status: string;
+}
+
 export default function RecordsPage() {
     const [searchTerm, setSearchTerm] = useState("");
-    const [records, setRecords] = useState<any[]>([]);
+    const [records, setRecords] = useState<Citizen[]>([]);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState("all");
     const [serviceFilter, setServiceFilter] = useState("all");
@@ -50,7 +56,7 @@ export default function RecordsPage() {
         if (!confirm("Are you sure you want to delete this record?")) return;
         try {
             await fetch(`/api/citizens/${id}`, { method: 'DELETE' });
-            setRecords(records.filter(r => r.id !== id));
+            setRecords((prev) => prev.filter(r => r.id !== id));
         } catch (err) {
             console.error("Delete error:", err);
         }
@@ -153,7 +159,7 @@ export default function RecordsPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 font-medium text-sm">
-                                {records.map((record) => (
+                                {records.map((record: Citizen) => (
                                     <tr key={record.id} className="hover:bg-gray-50/50 transition-colors group">
                                         <td className="px-6 py-5">
                                             <p className="text-gray-900 font-bold">{record.fullName}</p>

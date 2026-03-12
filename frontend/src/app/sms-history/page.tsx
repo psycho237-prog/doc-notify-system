@@ -6,18 +6,25 @@ import { Button } from "@/components/ui/button";
 import {
     Search,
     Download,
-    Bell,
     ChevronDown,
-    Calendar,
     CheckCircle2,
     XCircle,
     Loader2
 } from "lucide-react";
 import Link from "next/link";
 
+interface SMSLog {
+    id: string;
+    citizenName?: string;
+    phoneNumber?: string;
+    status: string;
+    timestamp: string;
+    messageSid?: string;
+}
+
 export default function SMSHistoryPage() {
     const [searchTerm, setSearchTerm] = useState("");
-    const [logs, setLogs] = useState<any[]>([]);
+    const [logs, setLogs] = useState<SMSLog[]>([]);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState("all");
 

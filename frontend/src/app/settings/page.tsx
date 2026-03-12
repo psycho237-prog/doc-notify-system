@@ -1,7 +1,7 @@
 "use client";
 
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Settings as SettingsIcon, Bell, Smartphone, Globe, Save } from "lucide-react";
+import { Smartphone, Globe, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export default function SettingsPage() {
