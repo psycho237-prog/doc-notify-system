@@ -7,8 +7,7 @@ import {
     FileText,
     MessageSquare,
     Users,
-    Settings,
-    Bell
+    Settings
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 

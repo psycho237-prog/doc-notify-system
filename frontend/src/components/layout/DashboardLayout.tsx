@@ -1,7 +1,7 @@
 "use client";
 
 import { Sidebar } from "./Sidebar";
-import { TopNav } from "./TopNav"; // We'll create this if needed, or put top bar logic in pages.
+// We'll create this if needed, or put top bar logic in pages.
 import { ReactNode } from "react";
 
 export function DashboardLayout({ children }: { children: ReactNode }) {

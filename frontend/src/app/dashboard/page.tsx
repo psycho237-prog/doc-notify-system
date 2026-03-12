@@ -4,8 +4,7 @@ import {
     ArrowUpRight,
     ArrowDownRight,
     Clock,
-    Send,
-    AlertCircle
+    Send
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
@@ -55,7 +54,7 @@ export default function DashboardPage() {
             <div className="flex justify-between items-end mb-8">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Dashboard Overview</h1>
-                    <p className="text-gray-500 mt-1">Welcome back, here's what's happening with your dossiers today.</p>
+                    <p className="text-gray-500 mt-1">Welcome back, here&apos;s what&apos;s happening with your dossiers today.</p>
                 </div>
                 <div className="flex items-center gap-4">
                     <Button variant="outline" className="flex items-center gap-2 border-gray-300 text-gray-700 font-semibold bg-white rounded-lg shadow-sm">
@@ -74,7 +73,7 @@ export default function DashboardPage() {
                         <div className="text-4xl font-bold text-gray-900 mt-2 mb-6">{stat.value}</div>
 
                         <div className={`flex items-center text-sm font-medium ${stat.trend === 'up' ? 'text-green-600' :
-                                stat.trend === 'down' ? 'text-red-600' : 'text-orange-600'
+                            stat.trend === 'down' ? 'text-red-600' : 'text-orange-600'
                             }`}>
                             {stat.trend === 'up' && !stat.icon && <ArrowUpRight className="w-4 h-4 mr-1" />}
                             {stat.trend === 'down' && !stat.icon && <ArrowDownRight className="w-4 h-4 mr-1" />}
@@ -112,9 +111,9 @@ export default function DashboardPage() {
                                     <td className="px-6 py-4 text-gray-700">{row.name}</td>
                                     <td className="px-6 py-4">
                                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${row.status === 'Ready' ? 'bg-green-100 text-green-700' :
-                                                row.status === 'Processing' ? 'bg-orange-100 text-orange-700' :
-                                                    row.status === 'Registered' ? 'bg-blue-100 text-blue-700' :
-                                                        'bg-red-100 text-red-700'
+                                            row.status === 'Processing' ? 'bg-orange-100 text-orange-700' :
+                                                row.status === 'Registered' ? 'bg-blue-100 text-blue-700' :
+                                                    'bg-red-100 text-red-700'
                                             }`}>
                                             {row.status}
                                         </span>
