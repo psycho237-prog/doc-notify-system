@@ -9,14 +9,11 @@ import {
     Bell,
     ChevronDown,
     Trash2,
-    Loader2,
     Plus,
     Filter,
     Edit3,
-    CheckCircle2,
     XCircle,
-    Copy,
-    Share2
+    Copy
 } from "lucide-react";
 import Link from "next/link";
 
@@ -48,7 +45,7 @@ export default function RecordsPage() {
                 const res = await fetch(url);
                 const data = await res.json();
                 setRecords(data.citizens || []);
-            } catch (err) {
+            } catch (_err) {
                 console.error("Records fetch error:", err);
             } finally {
                 setLoading(false);
@@ -63,7 +60,7 @@ export default function RecordsPage() {
         try {
             await fetch(`/api/citizens/${id}`, { method: 'DELETE' });
             setRecords((prev) => prev.filter(r => r.id !== id));
-        } catch (err) {
+        } catch (_err) {
             console.error("Delete error:", err);
         }
     };
@@ -78,7 +75,7 @@ export default function RecordsPage() {
             });
             const data = await res.json();
             alert(data.message || "Priority SMS notification dispatched successfully!");
-        } catch (err) {
+        } catch (_err) {
             alert("Protocol error: SMS gateway unresponsive.");
         }
     };
@@ -214,14 +211,14 @@ export default function RecordsPage() {
                                         </td>
                                         <td className="px-10 py-8">
                                             <span className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.15em] border flex items-center w-fit gap-2 shadow-sm ${record.status === 'ready' ? 'bg-green-50 text-green-700 border-green-100' :
-                                                    record.status === 'processing' ? 'bg-orange-50 text-orange-700 border-orange-100' :
-                                                        record.status === 'pending' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                                                            'bg-red-50 text-red-700 border-red-100'
+                                                record.status === 'processing' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                                                    record.status === 'pending' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                                        'bg-red-50 text-red-700 border-red-100'
                                                 }`}>
                                                 <div className={`w-2 h-2 rounded-full ${record.status === 'ready' ? 'bg-green-500' :
-                                                        record.status === 'processing' ? 'bg-orange-500' :
-                                                            record.status === 'pending' ? 'bg-blue-500' :
-                                                                'bg-red-500'
+                                                    record.status === 'processing' ? 'bg-orange-500' :
+                                                        record.status === 'pending' ? 'bg-blue-500' :
+                                                            'bg-red-500'
                                                     } animate-pulse`}></div>
                                                 {record.status}
                                             </span>

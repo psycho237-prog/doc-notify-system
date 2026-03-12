@@ -9,12 +9,10 @@ import {
     ChevronDown,
     CheckCircle2,
     XCircle,
-    Loader2,
     History,
     MessageSquare,
     ExternalLink,
-    Calendar,
-    Filter
+    Calendar
 } from "lucide-react";
 import Link from "next/link";
 
@@ -156,7 +154,7 @@ export default function SMSHistoryPage() {
                                         <td className="px-10 py-8">
                                             <div className="flex items-center gap-4">
                                                 <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-black text-xs shadow-inner">
-                                                    {row.citizenName ? row.citizenName.split(' ').map((n: any) => n[0]).join('') : '??'}
+                                                    {row.citizenName ? row.citizenName.split(' ').map((n: string) => n[0]).join('') : '??'}
                                                 </div>
                                                 <span className="text-gray-900 font-black text-lg">{row.citizenName}</span>
                                             </div>

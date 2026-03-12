@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Shield, Mail, Calendar, UserPlus, Search, MoreHorizontal, Trash2, Edit2 } from "lucide-react";
+import { Shield, Mail, Calendar, UserPlus, Search, Trash2, Edit2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const initialAdmins = [
@@ -13,7 +13,6 @@ const initialAdmins = [
 export default function UsersPage() {
     const [admins, setAdmins] = useState(initialAdmins);
     const [searchTerm, setSearchTerm] = useState("");
-    const [isAdding, setIsAdding] = useState(false);
 
     const handleAddAdmin = () => {
         // Just as demonstration of functionality

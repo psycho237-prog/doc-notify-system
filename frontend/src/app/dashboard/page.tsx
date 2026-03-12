@@ -4,13 +4,11 @@ import { useState, useEffect } from "react";
 import {
     Clock,
     Send,
-    Loader2,
     Users as UsersIcon,
     ArrowUpRight,
     ArrowDownRight,
     TrendingUp,
     LayoutDashboard,
-    Bell,
     CheckCircle2
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
@@ -198,9 +196,9 @@ export default function DashboardPage() {
                                     </td>
                                     <td className="px-10 py-8">
                                         <span className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.15em] border ${row.status === 'ready' ? 'bg-green-50 text-green-700 border-green-100' :
-                                                row.status === 'processing' ? 'bg-orange-50 text-orange-700 border-orange-100' :
-                                                    row.status === 'pending' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                                                        'bg-red-50 text-red-700 border-red-100'
+                                            row.status === 'processing' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                                                row.status === 'pending' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                                                    'bg-red-50 text-red-700 border-red-100'
                                             }`}>
                                             {row.status}
                                         </span>
@@ -221,7 +219,7 @@ export default function DashboardPage() {
     );
 }
 
-function PlusIcon(props: any) {
+function PlusIcon(props: React.SVGProps<SVGSVGElement>) {
     return (
         <svg
             {...props}
