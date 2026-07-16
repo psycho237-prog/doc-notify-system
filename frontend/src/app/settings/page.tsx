@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Smartphone, Globe, Save, CheckCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -42,7 +42,7 @@ export default function SettingsPage() {
                                     <input
                                         type="text"
                                         value={name}
-                                        onChange={(e) => setName(e.target.value)}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
                                         className="w-full px-5 py-4 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-[#1e3a8a] outline-none transition-all font-bold text-gray-800"
                                     />
                                 </div>
@@ -62,7 +62,7 @@ export default function SettingsPage() {
                             <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
                                 <Smartphone className="w-5 h-5 text-[#1e3a8a]" />
                             </div>
-                            SMS Configuration (Twilio)
+                            SMS Configuration (MboaSMS)
                         </h2>
                         <div className="space-y-6">
                             <div className="bg-blue-50/50 p-5 rounded-2xl border border-blue-100 flex gap-4 items-start">
@@ -70,13 +70,13 @@ export default function SettingsPage() {
                                     <Globe className="w-4 h-4 text-blue-600" />
                                 </div>
                                 <p className="text-xs text-blue-800 font-bold leading-relaxed">
-                                    Twilio credentials are encrypted and stored in environment variables. To update tokens, please contact your system administrator.
+                                    MboaSMS credentials are secure and loaded from environment variables. To manage API keys, please contact your system administrator.
                                 </p>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-xs font-extrabold text-gray-400 uppercase tracking-widest ml-1">Sender ID / Phone Number</label>
+                                <label className="text-xs font-extrabold text-gray-400 uppercase tracking-widest ml-1">Sender ID</label>
                                 <div className="w-full px-5 py-4 border border-gray-100 rounded-2xl bg-gray-50 text-gray-400 font-mono text-sm">
-                                    +1 (308) 536-4774
+                                    DocNotify
                                 </div>
                             </div>
                         </div>

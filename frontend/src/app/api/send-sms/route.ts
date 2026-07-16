@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import twilio from "twilio";
 import { getAdminDB } from "@/lib/firebase-admin";
-import { detectCamNetwork, formatCamPhone } from "@/lib/phone-utils";
+import { detectCamNetwork, formatCamPhone, sanitizeSmsMessage } from "@/lib/phone-utils";
 import { FieldValue } from "firebase-admin/firestore";
 
 /**
@@ -30,18 +29,16 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const accountSid = process.env.TWILIO_ACCOUNT_SID;
-        const authToken = process.env.TWILIO_AUTH_TOKEN;
-        const fromNumber = process.env.TWILIO_PHONE_NUMBER;
+        const apiKey = process.env.MBOASMS_API_KEY || "mboa_e4838de095f741dbace47138fa4765bb";
+        const senderId = process.env.MBOASMS_SENDER_ID || "DocNotify";
 
-        if (!accountSid || !authToken || !fromNumber) {
+        if (!apiKey) {
             return NextResponse.json(
-                { error: "Twilio environment variables are not configured." },
+                { error: "MboaSMS API Key is not configured." },
                 { status: 500 }
             );
         }
 
-        const client = twilio(accountSid, authToken);
         const db = getAdminDB();
 
         const results: { citizenId: string; status: string; error?: string }[] = [];
@@ -64,15 +61,30 @@ export async function POST(req: NextRequest) {
                 }
 
                 const template = citizen.language === "FR" ? messageFR : messageEN;
-                const personalised = template.replace(/{name}/gi, citizen.fullName ?? "");
+                const personalised = sanitizeSmsMessage(template.replace(/{name}/gi, citizen.fullName ?? ""));
                 const phone = formatCamPhone(citizen.phoneNumber ?? "");
                 const network = detectCamNetwork(phone);
 
-                const msg = await client.messages.create({
-                    body: personalised,
-                    from: fromNumber,
-                    to: phone,
+                // Send SMS via MboaSMS developer API
+                const response = await fetch("https://api.mboasms.com/api/v1/developer/sms/send", {
+                    method: "POST",
+                    headers: {
+                        "X-API-Key": apiKey,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        phoneNumbers: [phone],
+                        message: personalised,
+                        senderId: senderId,
+                    }),
                 });
+
+                const responseData = await response.json();
+                if (!response.ok || !responseData.success) {
+                    throw new Error(responseData.message || responseData.error?.details || "Failed to send SMS via MboaSMS");
+                }
+
+                const sid = `mboa_${Math.random().toString(36).substring(2, 9)}_${Date.now()}`;
 
                 await db.collection("sms_logs").add({
                     citizenId,
@@ -81,7 +93,7 @@ export async function POST(req: NextRequest) {
                     message: personalised,
                     network,
                     status: "sent",
-                    sid: msg.sid,
+                    sid: sid,
                     institutionId,
                     sentAt: FieldValue.serverTimestamp(),
                 });

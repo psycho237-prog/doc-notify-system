@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
     Bell,
     Send,
@@ -19,6 +20,32 @@ export default function NotificationsPage() {
     const [msgEN, setMsgEN] = useState("Hello {name}, your security code is {code}.\nPlease do not share this with anyone.");
     const [msgFR, setMsgFR] = useState("Bonjour {name}, votre code de sécurité est {code}. Veuillez ne le partager avec personne.");
     const [isSending, setIsSending] = useState(false);
+
+    const handleCleanAI = (lang: "EN" | "FR") => {
+        const text = lang === "EN" ? msgEN : msgFR;
+        let cleaned = text
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, ""); // removes diacritics
+            
+        const replacements: Record<string, string> = {
+            'œ': 'oe', 'Œ': 'OE', 'æ': 'ae', 'Æ': 'AE',
+            'ç': 'c', 'Ç': 'C', 'ñ': 'n', 'Ñ': 'N',
+            '’': "'", '‘': "'", '`': "'", '“': '"', '”': '"',
+            '–': '-', '—': '-'
+        };
+        
+        for (const [key, value] of Object.entries(replacements)) {
+            cleaned = cleaned.split(key).join(value);
+        }
+
+        cleaned = cleaned.replace(/[^\x20-\x7E\r\n]/g, "");
+
+        if (lang === "EN") {
+            setMsgEN(cleaned);
+        } else {
+            setMsgFR(cleaned);
+        }
+    };
 
     const handleSend = () => {
         setIsSending(true);
@@ -80,6 +107,12 @@ export default function NotificationsPage() {
                                     1 Segment
                                 </span>
                             </div>
+                            <button
+                                onClick={() => handleCleanAI("EN")}
+                                className="flex items-center gap-2 text-[10px] font-black text-blue-600 hover:text-blue-800 uppercase tracking-widest transition-all bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 hover:scale-105"
+                            >
+                                <Sparkles className="w-3.5 h-3.5 text-blue-500 animate-pulse" /> Clean with AI
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -118,6 +151,12 @@ export default function NotificationsPage() {
                                     1 Segment
                                 </span>
                             </div>
+                            <button
+                                onClick={() => handleCleanAI("FR")}
+                                className="flex items-center gap-2 text-[10px] font-black text-indigo-600 hover:text-indigo-800 uppercase tracking-widest transition-all bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 hover:scale-105"
+                            >
+                                <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" /> Nettoyer avec l'IA
+                            </button>
                         </div>
                     </div>
                 </div>
