@@ -5,7 +5,6 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-    Bell,
     Send,
     Globe,
     Plus,
@@ -155,7 +154,7 @@ export default function NotificationsPage() {
                                 onClick={() => handleCleanAI("FR")}
                                 className="flex items-center gap-2 text-[10px] font-black text-indigo-600 hover:text-indigo-800 uppercase tracking-widest transition-all bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 hover:scale-105"
                             >
-                                <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" /> Nettoyer avec l'IA
+                                <Sparkles className="w-3.5 h-3.5 text-indigo-500 animate-pulse" /> Nettoyer avec l&apos;IA
                             </button>
                         </div>
                     </div>
