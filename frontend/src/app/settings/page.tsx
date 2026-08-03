@@ -84,12 +84,6 @@ export default function SettingsPage() {
                         }
                         className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-[#1e3a8a] transition-all"
                     />
-                    <label className="block text-xs font-black text-gray-400 uppercase tracking-widest mt-4 mb-1.5">
-                        {t("settings_sender")}
-                    </label>
-                    <div className="w-full px-3.5 py-2.5 border border-gray-100 rounded-xl bg-gray-50 text-gray-400 font-mono text-sm">
-                        {settings.senderId}
-                    </div>
                 </div>
 
                 {/* Data mode */}

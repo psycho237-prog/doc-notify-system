@@ -110,6 +110,120 @@ Ajoutez ces variables dans **Project → Settings → Environment Variables** (o
 
 ---
 
+## 🎯 Passer de la démo au mode production
+
+L'application démarre toujours en **mode démo** tant que `NEXT_PUBLIC_FIREBASE_API_KEY` n'est pas une vraie clé. Voici la marche à suivre complète pour un passage en production : **Firebase Auth** (connexion réelle), **Cloud Firestore** (données partagées) et **MboaSMS** (envoi réel).
+
+### Étape 1 — Préparer Firebase
+
+1. Allez sur [console.firebase.google.com](https://console.firebase.google.com) → **Add project** (ou utilisez `nnlomne-notify`).
+2. **Firestore Database** → *Create database* → **mode production** et une région proche de vos utilisateurs (ex. `europe-west`).
+3. **Authentication** → *Sign-in method* → activez **Email/Password**.
+4. **Authentication** → *Users* → *Add user* → créez le compte **administrateur** (e-mail + mot de passe fort). C'est ce couple que vous utiliserez pour vous connecter en production.
+5. **Project settings** (⚙️) → *Your apps* → *Add web app* → notez les **6 valeurs** : `apiKey`, `authDomain`, `projectId`, `storageBucket`, `messagingSenderId`, `appId`.
+
+### Étape 2 — Générer le compte de service (clé serveur)
+
+Les routes API (`/api/citizens`, `/api/dashboard`, `/api/sms-logs`, `/api/send-sms`) écrivent dans Firestore via le **SDK Admin** : elles ont besoin du compte de service.
+
+1. **Project settings** → onglet **Comptes de service** → **Générer une nouvelle clé privée** → un fichier `xxx-firebase-adminsdk-xxxxx.json` est téléchargé.
+2. Ce fichier est le **JSON complet** à mettre dans `FIREBASE_SERVICE_ACCOUNT_JSON` — **sur une seule ligne** (les retours à la ligne cassent la variable). Astuce : `cat fichier.json | jq -c` (Linux) ou `JSON.stringify(...)` dans la console du navigateur.
+
+> 🔒 Ne committez jamais ce fichier : il est déjà exclu par `.gitignore` (`*firebase-adminsdk*.json`, `*service-account*.json`).
+
+### Étape 3 — Récupérer la clé MboaSMS
+
+1. Connectez-vous au [dashboard MboaSMS](https://mboasms.com) → **API** → copiez la **clé API** et l'**identifiant expéditeur (Sender ID)**.
+2. Vérifiez que le compte dispose de **crédits SMS** suffisants.
+
+> ⚠️ Le code contient une **clé de secours en dur** (`src/app/api/send-sms/route.ts`, fallback `mboa_e483...`) qui permet l'envoi en démo sans configuration. Elle est **publique** (visible dans le dépôt) : en production, définissez toujours `MBOASMS_API_KEY` en variable d'environnement, **régénérez la clé** dans le dashboard MboaSMS (elle est compromise), puis retirez le fallback en dur du code.
+
+### Étape 4 — Configurer les variables dans Vercel
+
+**Project → Settings → Environment Variables** (environnement **Production**) :
+
+```env
+# ── Firebase (côté navigateur — préfixe NEXT_PUBLIC obligatoire) ──
+NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSy...                        # la vraie clé web → active le mode Firebase
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=xxx.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=nnlomne-notify
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=nnlomne-notify.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=000000000000
+NEXT_PUBLIC_FIREBASE_APP_ID=1:000000000000:web:000000000000
+
+# ── Firebase (côté serveur uniquement) ───────────────────────────
+FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account","project_id":"...",...}  # une seule ligne
+
+# ── MboaSMS (côté serveur uniquement) ────────────────────────────
+MBOASMS_API_KEY=votre_vraie_cle_mboasms
+MBOASMS_SENDER_ID=DocNotify
+```
+
+Redéployez ensuite (`git push` sur `master` → déploiement automatique, ou bouton **Redeploy** dans Vercel).
+
+### Étape 5 — Créer les index composites Firestore
+
+Les routes utilisent des requêtes combinant `where` + `orderBy` / `count`. La première fois, Firestore renvoie une erreur **500 avec un lien** pour créer l'**index composite** manquant — ouvrez ce lien (ou chargez les pages Accueil / Contacts / Historique) et cliquez **Create index**. Index requis :
+
+| Collection | Requête | Index à créer |
+| --- | --- | --- |
+| `citizens` | `where(institutionId)` + `orderBy(createdAt desc)` | `institutionId` ↑ + `createdAt` ↓ |
+| `sms_logs` | `where(institutionId)` + `orderBy(sentAt desc)` | `institutionId` ↑ + `sentAt` ↓ |
+| `sms_logs` | `where(institutionId)` + `where(status)` + `orderBy(sentAt desc)` | `institutionId` ↑ + `status` ↑ + `sentAt` ↓ |
+| `sms_logs` | compteurs `where(institutionId)` + `where(status)` + `where(sentAt >= …)` | combinaison des 3 champs |
+
+> Les collections `citizens` et `sms_logs` sont créées automatiquement à la première écriture. Si une route renvoie `500` avec « index » dans le message, c'est ce point.
+
+### Étape 6 — Verrouiller les règles Firestore
+
+L'application ne parle **jamais** directement à Firestore : tout passe par les routes API (SDK Admin, qui contourne les règles). Vous pouvez donc **refuser tout accès client** :
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+```
+
+Publiez ces règles dans **Firestore → Rules**.
+
+### Étape 7 — Vérifier que le mode production est actif
+
+| Contrôle | Démo | Production attendue |
+| --- | --- | --- |
+| Page de connexion | Encadré « Mode démo » + identifiants fixes | Pas d'encadré, connexion e-mail/mot de passe Firebase |
+| Réglages → Mode de données | « Démo locale » | « Firebase — données synchronisées dans Firestore » |
+| Contact ajouté sur un appareil | — | Visible depuis un autre navigateur |
+| Réglages → Mode simulation | À désactiver | **Désactivé** avant tout envoi réel |
+
+> ⚠️ Le réglage **Mode simulation** est stocké **par navigateur** (localStorage). Vérifiez qu'il est bien éteint sur chaque poste d'administration avant d'envoyer de vrais SMS.
+
+### Étape 8 — Checklist de sécurité avant mise en service
+
+- [ ] `MBOASMS_API_KEY` définie dans Vercel et clé MboaSMS **régénérée** (l'ancienne est publique)
+- [ ] Fallback en dur retiré de `src/app/api/send-sms/route.ts`
+- [ ] `FIREBASE_SERVICE_ACCOUNT_JSON` présente (sinon les routes renvoient 500)
+- [ ] Utilisateur administrateur créé dans Firebase Auth avec mot de passe fort
+- [ ] Règles Firestore publiées (accès client refusé)
+- [ ] Index composites créés (Accueil, Contacts, Historique sans erreur 500)
+- [ ] Mode simulation désactivé
+- [ ] **Test réel** réussi avec un petit lot (2–3 numéros) avant la campagne
+
+### Dépannage rapide
+
+| Symptôme | Cause probable | Correctif |
+| --- | --- | --- |
+| Console : « API unavailable, switching to local mode » | `FIREBASE_SERVICE_ACCOUNT_JSON` absente ou mal formée (retours à la ligne) | Corrigez la variable (une seule ligne) |
+| `500` sur `/api/dashboard` avec « index » | Index composite manquant | Créez l'index via le lien dans l'erreur |
+| Connexion refusée | Utilisateur absent de Firebase Auth ou provider Email/Password désactivé | Ajoutez l'utilisateur / activez le provider |
+| SMS marqués échoués | Clé MboaSMS invalide ou crédits épuisés | Vérifiez la clé et le solde ; testez d'abord en mode simulation |
+
+---
+
 ## 🧪 Tests & validation
 
 ```bash

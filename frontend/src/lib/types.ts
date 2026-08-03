@@ -40,12 +40,10 @@ export interface Stats {
 
 export interface Settings {
     institutionName: string;
-    senderId: string;
     simulateSms: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
     institutionName: "NNLOMNE Administrative",
-    senderId: "DocNotify",
     simulateSms: false,
 };

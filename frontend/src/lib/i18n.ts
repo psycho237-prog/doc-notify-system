@@ -126,7 +126,6 @@ export const translations = {
     settings_subtitle: { fr: "Configuration de l'application", en: "Application configuration" },
     settings_institution: { fr: "Institution", en: "Institution" },
     settings_institution_name: { fr: "Nom de l'institution", en: "Institution name" },
-    settings_sender: { fr: "Identifiant expéditeur (Sender ID)", en: "Sender ID" },
     settings_mode: { fr: "Mode de données", en: "Data mode" },
     settings_mode_local: { fr: "Démo locale — données stockées dans ce navigateur", en: "Local demo — data stored in this browser" },
     settings_mode_firebase: { fr: "Firebase — données synchronisées dans Firestore", en: "Firebase — data synced to Firestore" },
