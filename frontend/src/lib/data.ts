@@ -386,6 +386,8 @@ export function saveSelectedIds(ids: string[]): void {
 /* ── Auth (local mode demo login) ────────────────────────────────── */
 
 const LS_AUTH = "nnlomne.auth.v1";
+const LS_PASSWORD = "nnlomne.password.v1";
+const DEFAULT_PASSWORD = "password";
 
 export function isLoggedIn(): boolean {
     return readLS<string>(LS_AUTH, "") === "1";
@@ -402,4 +404,21 @@ export function setLoggedOut(): void {
     } catch {
         /* ignore */
     }
+}
+
+/* ── Demo password (local mode, changeable from Settings) ───────── */
+
+/** Returns the current local (demo) password, defaulting to "password". */
+export function getLocalPassword(): string {
+    return readLS<string>(LS_PASSWORD, "") || DEFAULT_PASSWORD;
+}
+
+/** Verifies a candidate against the stored local (demo) password. */
+export function checkLocalPassword(candidate: string): boolean {
+    return candidate === getLocalPassword();
+}
+
+/** Stores a new local (demo) password. */
+export function setLocalPassword(password: string): void {
+    writeLS(LS_PASSWORD, password);
 }

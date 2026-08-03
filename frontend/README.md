@@ -21,9 +21,11 @@ Ouvrez [http://localhost:3000](http://localhost:3000).
 | Champ | Valeur |
 | --- | --- |
 | E-mail | `admin@nnlomne.gov` |
-| Mot de passe | `password` |
+| Mot de passe | `password` (modifiable dans **Réglages → Changer le mot de passe**) |
 
-Dès la première connexion, 6 contacts de démonstration sont créés (modifiables/supprimables dans l'onglet **Contacts**).
+Dès la première connexion, 6 contacts de démonstration sont créés (modifiables/supprimables dans l'onglet **Contacts**). En mode démo, le mot de passe se change depuis **Réglages** (stocké dans le navigateur) ; en mode production, il se change dans Firebase Auth depuis la même interface.
+
+> 🔑 **Mot de passe démo oublié ?** Le mot de passe démo est stocké **par navigateur** (localStorage). Pour réinitialiser : ouvrez les outils développeur (F12) → Console → `localStorage.clear()` puis rechargez la page (retour au mot de passe par défaut `password`), ou utilisez un navigateur neuf.
 
 ---
 

@@ -13,10 +13,9 @@ export const translations = {
     login_password: { fr: "Mot de passe", en: "Password" },
     login_btn: { fr: "Se connecter", en: "Sign in" },
     login_loading: { fr: "Connexion...", en: "Signing in..." },
-    login_error: { fr: "Identifiants invalides. Utilisez admin@nnlomne.gov / password pour les tests.", en: "Invalid credentials. Use admin@nnlomne.gov / password for testing." },
-    login_error_firebase: { fr: "Identifiants invalides. Vérifiez votre e-mail et mot de passe.", en: "Invalid credentials. Check your email and password." },
+    login_error: { fr: "E-mail ou mot de passe incorrect", en: "Invalid email or password" },
+    login_error_firebase: { fr: "E-mail ou mot de passe incorrect", en: "Invalid email or password" },
     login_secure: { fr: "Accès réservé à l'administration", en: "Admin access only" },
-    login_demo_hint: { fr: "Mode démo : admin@nnlomne.gov — mot de passe : password", en: "Demo mode: admin@nnlomne.gov — password: password" },
     login_rights: { fr: "© 2026 Services Administratifs NNLOMNE.", en: "© 2026 NNLOMNE Administrative Services." },
 
     // ─── Navigation ──────────────────────────────────────────────────
@@ -138,6 +137,18 @@ export const translations = {
     settings_clear_confirm: { fr: "Effacer définitivement toutes les données locales ?", en: "Permanently delete all local data?" },
     settings_saved: { fr: "Enregistré ✓", en: "Saved ✓" },
     settings_save: { fr: "Enregistrer", en: "Save" },
+    settings_password: { fr: "Changer le mot de passe", en: "Change password" },
+    settings_pw_local_note: { fr: "Mode démo : le mot de passe est stocké dans ce navigateur", en: "Demo mode: the password is stored in this browser" },
+    settings_pw_firebase_note: { fr: "Le mot de passe est mis à jour dans Firebase Auth", en: "The password is updated in Firebase Auth" },
+    settings_pw_current: { fr: "Mot de passe actuel", en: "Current password" },
+    settings_pw_new: { fr: "Nouveau mot de passe", en: "New password" },
+    settings_pw_confirm: { fr: "Confirmer le nouveau mot de passe", en: "Confirm new password" },
+    settings_pw_btn: { fr: "Mettre à jour", en: "Update" },
+    settings_pw_short: { fr: "Le mot de passe doit contenir au moins 6 caractères", en: "Password must be at least 6 characters" },
+    settings_pw_mismatch: { fr: "Les mots de passe ne correspondent pas", en: "Passwords do not match" },
+    settings_pw_wrong: { fr: "Mot de passe actuel incorrect", en: "Current password is incorrect" },
+    settings_pw_error: { fr: "Échec de la mise à jour. Réessayez.", en: "Failed to update. Try again." },
+    settings_pw_saved: { fr: "Mot de passe mis à jour ✓", en: "Password updated ✓" },
 
     // ─── Common ──────────────────────────────────────────────────────
     common_cancel: { fr: "Annuler", en: "Cancel" },

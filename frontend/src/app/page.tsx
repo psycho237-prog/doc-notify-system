@@ -7,10 +7,9 @@ import { Button } from "@/components/ui/button";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useTranslation } from "@/lib/lang-context";
-import { getMode, setLoggedIn } from "@/lib/data";
+import { getLocalPassword, getMode, setLoggedIn } from "@/lib/data";
 
 const DEMO_EMAIL = "admin@nnlomne.gov";
-const DEMO_PASSWORD = "password";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -31,8 +30,8 @@ export default function LoginPage() {
             if (isFirebaseMode) {
                 await signInWithEmailAndPassword(auth, email, password);
             } else {
-                // Local demo mode: fixed admin credentials.
-                if (email.trim().toLowerCase() !== DEMO_EMAIL || password !== DEMO_PASSWORD) {
+                // Local demo mode: fixed admin email, password changeable from Settings.
+                if (email.trim().toLowerCase() !== DEMO_EMAIL || password !== getLocalPassword()) {
                     throw new Error("invalid");
                 }
             }
@@ -78,12 +77,6 @@ export default function LoginPage() {
                 </div>
 
                 <div className="w-full bg-white shadow-xl rounded-3xl p-6 border border-gray-100">
-                    {!isFirebaseMode && (
-                        <div className="mb-5 px-3.5 py-2.5 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-800 font-bold">
-                            🔑 {t("login_demo_hint")}
-                        </div>
-                    )}
-
                     <form className="space-y-4" onSubmit={handleLogin}>
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-1.5">

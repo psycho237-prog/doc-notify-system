@@ -1,13 +1,16 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
     addRecipient,
+    checkLocalPassword,
     clearLocalData,
     deleteRecipients,
+    getLocalPassword,
     getLogs,
     getMode,
     getRecipients,
     getStats,
     seedLocalData,
+    setLocalPassword,
     setPendingSelection,
     takePendingSelection,
 } from "./data";
@@ -102,5 +105,18 @@ describe("data layer (local mode)", () => {
         seedLocalData();
         await deleteRecipients([]);
         expect(await getRecipients()).toHaveLength(SEED_RECIPIENTS.length);
+    });
+
+    it("defaults the local password to the demo value", () => {
+        expect(getLocalPassword()).toBe("password");
+        expect(checkLocalPassword("password")).toBe(true);
+        expect(checkLocalPassword("nope")).toBe(false);
+    });
+
+    it("changes and verifies the local password", () => {
+        setLocalPassword("nouveau-mdp");
+        expect(getLocalPassword()).toBe("nouveau-mdp");
+        expect(checkLocalPassword("password")).toBe(false);
+        expect(checkLocalPassword("nouveau-mdp")).toBe(true);
     });
 });

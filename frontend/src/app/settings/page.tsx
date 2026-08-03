@@ -6,6 +6,7 @@ import {
     Database,
     FlaskConical,
     Languages,
+    KeyRound,
     Trash2,
     Save,
     Loader2,
@@ -15,10 +16,12 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/lang-context";
 import {
+    checkLocalPassword,
     clearLocalData,
     getMode,
     getSettings,
     saveSettings,
+    setLocalPassword,
 } from "@/lib/data";
 import type { Settings as AppSettings } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -28,6 +31,12 @@ export default function SettingsPage() {
     const [settings, setSettings] = useState<AppSettings | null>(null);
     const [saving, setSaving] = useState(false);
     const [saved, setSaved] = useState(false);
+    const [currentPw, setCurrentPw] = useState("");
+    const [newPw, setNewPw] = useState("");
+    const [confirmPw, setConfirmPw] = useState("");
+    const [pwBusy, setPwBusy] = useState(false);
+    const [pwError, setPwError] = useState("");
+    const [pwSuccess, setPwSuccess] = useState(false);
 
     useEffect(() => {
         setSettings(getSettings());
@@ -58,6 +67,57 @@ export default function SettingsPage() {
         if (!confirm(t("settings_clear_confirm"))) return;
         clearLocalData();
         window.location.reload();
+    };
+
+    const handleChangePassword = async () => {
+        setPwError("");
+        if (newPw.length < 6) {
+            setPwError(t("settings_pw_short"));
+            return;
+        }
+        if (newPw !== confirmPw) {
+            setPwError(t("settings_pw_mismatch"));
+            return;
+        }
+        setPwBusy(true);
+        try {
+            if (isLocalMode) {
+                if (!checkLocalPassword(currentPw)) throw new Error("wrong_current");
+                setLocalPassword(newPw);
+            } else {
+                // Firebase mode: re-authenticate then update the Auth user.
+                const { EmailAuthProvider, reauthenticateWithCredential, updatePassword } =
+                    await import("firebase/auth");
+                const { auth } = await import("@/lib/firebase");
+                const user = auth.currentUser;
+                if (!user?.email) throw new Error("not_signed_in");
+                await reauthenticateWithCredential(
+                    user,
+                    EmailAuthProvider.credential(user.email, currentPw)
+                );
+                await updatePassword(user, newPw);
+            }
+            setCurrentPw("");
+            setNewPw("");
+            setConfirmPw("");
+            setPwSuccess(true);
+            setTimeout(() => setPwSuccess(false), 3000);
+        } catch (err) {
+            const code = (err as { code?: string })?.code;
+            if (
+                code === "auth/wrong-password" ||
+                code === "auth/invalid-credential" ||
+                (err as Error).message === "wrong_current"
+            ) {
+                setPwError(t("settings_pw_wrong"));
+            } else if (code === "auth/weak-password") {
+                setPwError(t("settings_pw_short"));
+            } else {
+                setPwError(t("settings_pw_error"));
+            }
+        } finally {
+            setPwBusy(false);
+        }
     };
 
     return (
@@ -151,6 +211,76 @@ export default function SettingsPage() {
                                 {l}
                             </button>
                         ))}
+                    </div>
+                </div>
+
+                {/* Change password */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                    <p className="flex items-center gap-2 text-sm font-black text-gray-900 mb-1">
+                        <KeyRound className="w-4 h-4 text-[#1e3a8a]" /> {t("settings_password")}
+                    </p>
+                    <p className="text-xs text-gray-400 font-medium mb-3">
+                        {isLocalMode
+                            ? t("settings_pw_local_note")
+                            : t("settings_pw_firebase_note")}
+                    </p>
+                    <div className="space-y-2.5">
+                        <input
+                            type="password"
+                            value={currentPw}
+                            onChange={(e) => {
+                                setCurrentPw(e.target.value);
+                                if (pwError) setPwError("");
+                            }}
+                            placeholder={t("settings_pw_current")}
+                            autoComplete="current-password"
+                            className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-[#1e3a8a] transition-all placeholder:text-gray-300"
+                        />
+                        <input
+                            type="password"
+                            value={newPw}
+                            onChange={(e) => {
+                                setNewPw(e.target.value);
+                                if (pwError) setPwError("");
+                            }}
+                            placeholder={t("settings_pw_new")}
+                            autoComplete="new-password"
+                            className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-[#1e3a8a] transition-all placeholder:text-gray-300"
+                        />
+                        <input
+                            type="password"
+                            value={confirmPw}
+                            onChange={(e) => {
+                                setConfirmPw(e.target.value);
+                                if (pwError) setPwError("");
+                            }}
+                            placeholder={t("settings_pw_confirm")}
+                            autoComplete="new-password"
+                            onKeyDown={(e) => e.key === "Enter" && handleChangePassword()}
+                            className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-[#1e3a8a] transition-all placeholder:text-gray-300"
+                        />
+                        {pwError && (
+                            <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2 font-medium">
+                                {pwError}
+                            </p>
+                        )}
+                        {pwSuccess && (
+                            <p className="text-xs text-green-700 bg-green-50 border border-green-100 rounded-xl px-3 py-2 font-bold">
+                                {t("settings_pw_saved")}
+                            </p>
+                        )}
+                        <Button
+                            onClick={handleChangePassword}
+                            disabled={pwBusy || !currentPw || !newPw || !confirmPw}
+                            className="w-full bg-gray-900 hover:bg-gray-800 text-white py-3.5 rounded-xl font-black text-sm shadow-sm transition-all active:scale-[0.98] whitespace-nowrap"
+                        >
+                            {pwBusy ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <KeyRound className="w-4 h-4" />
+                            )}
+                            <span className="ml-2">{t("settings_pw_btn")}</span>
+                        </Button>
                     </div>
                 </div>
 
