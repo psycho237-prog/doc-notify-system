@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
         const db = getAdminDB();
         const base = db.collection("citizens").where("institutionId", "==", institutionId);
 
-        const [total, processing, ready, smsTodaySnap] = await Promise.all([
+        const [total, processing, ready, smsTodaySnap, smsTotalSnap, smsFailedSnap] = await Promise.all([
             base.count().get(),
             base.where("status", "==", "processing").count().get(),
             base.where("status", "==", "ready").count().get(),
@@ -28,6 +28,18 @@ export async function GET(req: NextRequest) {
                     .count()
                     .get();
             })(),
+            db
+                .collection("sms_logs")
+                .where("institutionId", "==", institutionId)
+                .where("status", "==", "sent")
+                .count()
+                .get(),
+            db
+                .collection("sms_logs")
+                .where("institutionId", "==", institutionId)
+                .where("status", "==", "failed")
+                .count()
+                .get(),
         ]);
 
         // 5 most recent dossiers
@@ -43,6 +55,8 @@ export async function GET(req: NextRequest) {
             processing: processing.data().count,
             ready: ready.data().count,
             smsSentToday: smsTodaySnap.data().count,
+            smsTotal: smsTotalSnap.data().count,
+            smsFailed: smsFailedSnap.data().count,
             recentDossiers: recent,
         });
     } catch (err: unknown) {

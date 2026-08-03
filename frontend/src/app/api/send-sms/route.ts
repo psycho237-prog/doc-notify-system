@@ -1,126 +1,167 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDB } from "@/lib/firebase-admin";
-import { detectCamNetwork, formatCamPhone, sanitizeSmsMessage } from "@/lib/phone-utils";
-import { FieldValue } from "firebase-admin/firestore";
+import {
+    formatCamPhone,
+    isValidCamPhone,
+    sanitizeSmsMessage,
+} from "@/lib/phone-utils";
+import { getAdminDB, isAdminConfigured } from "@/lib/firebase-admin";
+
+interface IncomingRecipient {
+    name?: string;
+    phone?: string;
+}
+
+interface ResultItem {
+    name: string;
+    phone: string;
+    status: "sent" | "failed";
+    message?: string;
+    error?: string;
+}
 
 /**
  * POST /api/send-sms
+ *
  * Body: {
- *   citizenIds: string[],   // target citizen doc IDs
- *   messageEN: string,      // English template with {name} variable
- *   messageFR: string,      // French template with {name} variable
- *   institutionId: string
+ *   recipients: [{ name, phone }, ...],   // up to 500
+ *   message: string,                      // template with {name} variable
+ *   simulate?: boolean                    // skip the real MboaSMS call
  * }
+ *
+ * Each recipient gets the same message personalized with their own name,
+ * fully sanitized (no special characters). When a Firebase service account
+ * is configured, every result is also logged to Firestore (sms_logs).
  */
 export async function POST(req: NextRequest) {
     try {
-        const body = await req.json();
-        const { citizenIds, messageEN, messageFR, institutionId } = body as {
-            citizenIds: string[];
-            messageEN: string;
-            messageFR: string;
-            institutionId: string;
+        let body: unknown;
+        try {
+            body = await req.json();
+        } catch {
+            return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+        }
+        const { recipients, message, simulate } = body as {
+            recipients?: IncomingRecipient[];
+            message?: string;
+            simulate?: boolean;
         };
 
-        if (!citizenIds?.length || !messageEN || !messageFR || !institutionId) {
+        if (!Array.isArray(recipients) || recipients.length === 0) {
             return NextResponse.json(
-                { error: "Missing required fields: citizenIds, messageEN, messageFR, institutionId" },
+                { error: "recipients is required and must not be empty" },
                 { status: 400 }
             );
+        }
+        if (recipients.length > 500) {
+            return NextResponse.json(
+                { error: "Too many recipients (max 500 per batch)" },
+                { status: 400 }
+            );
+        }
+        if (!message || !message.trim()) {
+            return NextResponse.json({ error: "message is required" }, { status: 400 });
         }
 
         const apiKey = process.env.MBOASMS_API_KEY || "mboa_e4838de095f741dbace47138fa4765bb";
         const senderId = process.env.MBOASMS_SENDER_ID || "DocNotify";
+        const doSimulate = simulate === true;
 
-        if (!apiKey) {
-            return NextResponse.json(
-                { error: "MboaSMS API Key is not configured." },
-                { status: 500 }
+        const results: ResultItem[] = [];
+        let sent = 0;
+        let failed = 0;
+
+        for (const raw of recipients) {
+            const name = String(raw.name ?? "").trim();
+            const phone = formatCamPhone(String(raw.phone ?? "").trim());
+
+            if (!name || !isValidCamPhone(phone)) {
+                failed++;
+                results.push({
+                    name,
+                    phone,
+                    status: "failed",
+                    error: "Nom manquant ou numéro invalide",
+                });
+                continue;
+            }
+
+            // Personalized + sanitized: no accents, no emoji, no special chars.
+            const personalised = sanitizeSmsMessage(
+                message.replace(/{name}/gi, name)
             );
+
+            let status: "sent" | "failed" = "sent";
+            let error: string | undefined;
+
+            if (!doSimulate) {
+                try {
+                    const response = await fetch(
+                        "https://api.mboasms.com/api/v1/developer/sms/send",
+                        {
+                            method: "POST",
+                            headers: {
+                                "X-API-Key": apiKey,
+                                "Content-Type": "application/json",
+                            },
+                            body: JSON.stringify({
+                                phoneNumbers: [phone],
+                                message: personalised,
+                                senderId,
+                            }),
+                        }
+                    );
+                    const data = (await response.json().catch(() => ({}))) as {
+                        success?: boolean;
+                        message?: string;
+                        error?: { details?: string };
+                    };
+                    if (!response.ok || !data.success) {
+                        throw new Error(
+                            data.message ||
+                            data.error?.details ||
+                            "Échec d'envoi via MboaSMS"
+                        );
+                    }
+                } catch (err) {
+                    status = "failed";
+                    error = err instanceof Error ? err.message : String(err);
+                }
+            }
+
+            if (status === "sent") sent++;
+            else failed++;
+
+            results.push({ name, phone, status, message: personalised, error });
         }
 
-        const db = getAdminDB();
-
-        const results: { citizenId: string; status: string; error?: string }[] = [];
-
-        // Process sequentially to avoid rate-limit hammering
-        for (const citizenId of citizenIds) {
+        // Optional: persist to Firestore when a service account is configured.
+        if (isAdminConfigured()) {
             try {
-                const docSnap = await db.collection("citizens").doc(citizenId).get();
-                if (!docSnap.exists) {
-                    results.push({ citizenId, status: "skipped", error: "Not found" });
-                    continue;
+                const { FieldValue } = await import("firebase-admin/firestore");
+                const db = getAdminDB();
+                const batch = db.batch();
+                const col = db.collection("sms_logs");
+                for (const r of results) {
+                    batch.set(col.doc(), {
+                        citizenName: r.name,
+                        phoneNumber: r.phone,
+                        message: r.message ?? "",
+                        status: r.status,
+                        error: r.error ?? null,
+                        institutionId: "nnlomne",
+                        sentAt: FieldValue.serverTimestamp(),
+                    });
                 }
-
-                const citizen = docSnap.data()!;
-
-                // Enforce tenant isolation
-                if (citizen.institutionId !== institutionId) {
-                    results.push({ citizenId, status: "skipped", error: "Institution mismatch" });
-                    continue;
-                }
-
-                const template = citizen.language === "FR" ? messageFR : messageEN;
-                const personalised = sanitizeSmsMessage(template.replace(/{name}/gi, citizen.fullName ?? ""));
-                const phone = formatCamPhone(citizen.phoneNumber ?? "");
-                const network = detectCamNetwork(phone);
-
-                // Send SMS via MboaSMS developer API
-                const response = await fetch("https://api.mboasms.com/api/v1/developer/sms/send", {
-                    method: "POST",
-                    headers: {
-                        "X-API-Key": apiKey,
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        phoneNumbers: [phone],
-                        message: personalised,
-                        senderId: senderId,
-                    }),
-                });
-
-                const responseData = await response.json();
-                if (!response.ok || !responseData.success) {
-                    throw new Error(responseData.message || responseData.error?.details || "Failed to send SMS via MboaSMS");
-                }
-
-                const sid = `mboa_${Math.random().toString(36).substring(2, 9)}_${Date.now()}`;
-
-                await db.collection("sms_logs").add({
-                    citizenId,
-                    citizenName: citizen.fullName,
-                    phoneNumber: phone,
-                    message: personalised,
-                    network,
-                    status: "sent",
-                    sid: sid,
-                    institutionId,
-                    sentAt: FieldValue.serverTimestamp(),
-                });
-
-                results.push({ citizenId, status: "sent" });
-            } catch (err: unknown) {
-                const message = err instanceof Error ? err.message : String(err);
-                console.error(`SMS failed for ${citizenId}:`, message);
-
-                await db.collection("sms_logs").add({
-                    citizenId,
-                    status: "failed",
-                    error: message,
-                    institutionId,
-                    sentAt: FieldValue.serverTimestamp(),
-                });
-
-                results.push({ citizenId, status: "failed", error: message });
+                await batch.commit();
+            } catch (err) {
+                console.error("[send-sms] Failed to log to Firestore:", err);
             }
         }
 
-        const sent = results.filter((r) => r.status === "sent").length;
-        const failed = results.filter((r) => r.status === "failed").length;
-
         return NextResponse.json({ success: true, sent, failed, results });
-    } catch (err: unknown) {
+    } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
+        console.error("[send-sms] Unexpected error:", err);
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }

@@ -3,6 +3,21 @@ import { getFirestore } from "firebase-admin/firestore";
 
 let app: App;
 
+/**
+ * True only when a usable Firebase service account is available server-side.
+ * Used by API routes to decide whether to write to Firestore.
+ */
+export function isAdminConfigured(): boolean {
+    const raw = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+    if (!raw) return false;
+    try {
+        const parsed = JSON.parse(raw);
+        return !!(parsed && parsed.project_id && parsed.client_email && parsed.private_key);
+    } catch {
+        return false;
+    }
+}
+
 function getAdminApp(): App {
     if (getApps().length === 0) {
         const serviceAccount = JSON.parse(

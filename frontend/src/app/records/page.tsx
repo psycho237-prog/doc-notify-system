@@ -1,265 +1,363 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import { Button } from "@/components/ui/button";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
     Search,
-    Download,
-    Bell,
-    ChevronDown,
+    UserPlus,
     Trash2,
-    Plus,
-    Filter,
-    Edit3,
-    XCircle,
-    Copy
+    Users,
+    Loader2,
+    Smartphone,
+    Send,
+    Download,
 } from "lucide-react";
-import Link from "next/link";
-
-interface Citizen {
-    id: string;
-    fullName: string;
-    phoneNumber: string;
-    service: string;
-    status: string;
-}
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { Button } from "@/components/ui/button";
+import { useTranslation } from "@/lib/lang-context";
+import {
+    addRecipient,
+    deleteRecipients,
+    getRecipients,
+    loadSelectedIds,
+    saveSelectedIds,
+    setPendingSelection,
+} from "@/lib/data";
+import { downloadCsv, todayStamp } from "@/lib/csv";
+import { detectCamNetwork, isValidCamPhone } from "@/lib/phone-utils";
+import type { Recipient } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 export default function RecordsPage() {
-    const [searchTerm, setSearchTerm] = useState("");
-    const [records, setRecords] = useState<Citizen[]>([]);
+    const { t } = useTranslation();
+    const router = useRouter();
+    const [contacts, setContacts] = useState<Recipient[]>([]);
     const [loading, setLoading] = useState(true);
-    const [statusFilter, setStatusFilter] = useState("all");
-    const [serviceFilter, setServiceFilter] = useState("all");
+    const [searchTerm, setSearchTerm] = useState("");
+    const [name, setName] = useState("");
+    const [phone, setPhone] = useState("");
+    const [busy, setBusy] = useState(false);
+    const [selected, setSelected] = useState<Set<string>>(() => new Set(loadSelectedIds()));
 
-    useEffect(() => {
-        const fetchRecords = async () => {
-            setLoading(true);
-            try {
-                const institutionId = localStorage.getItem("institutionId") || "nnlomne";
-                let url = `/api/citizens?institutionId=${institutionId}`;
-                if (searchTerm) url += `&search=${encodeURIComponent(searchTerm)}`;
-                if (statusFilter !== "all") url += `&status=${statusFilter}`;
-                if (serviceFilter !== "all") url += `&service=${serviceFilter}`;
-
-                const res = await fetch(url);
-                const data = await res.json();
-                setRecords(data.citizens || []);
-            } catch (err) {
-                console.error("Records fetch error:", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        const timer = setTimeout(fetchRecords, 500);
-        return () => clearTimeout(timer);
-    }, [searchTerm, statusFilter, serviceFilter]);
-
-    const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this record? This action cannot be undone.")) return;
-        try {
-            await fetch(`/api/citizens/${id}`, { method: 'DELETE' });
-            setRecords((prev) => prev.filter(r => r.id !== id));
-        } catch (err) {
-            console.error("Delete error:", err);
-        }
+    /** Updates the selection and persists it (survives back navigation). */
+    const updateSelection = (updater: (prev: Set<string>) => Set<string>) => {
+        setSelected((prev) => {
+            const next = updater(prev);
+            saveSelectedIds([...next]);
+            return next;
+        });
     };
 
-    const handleSendSMS = async (id: string) => {
-        try {
-            const institutionId = localStorage.getItem("institutionId") || "nnlomne";
-            const res = await fetch('/api/send-sms', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ institutionId, citizenIds: [id] })
+    const refresh = async () => {
+        setContacts(await getRecipients());
+        setLoading(false);
+    };
+
+    useEffect(() => {
+        (async () => {
+            const loaded = await getRecipients();
+            setContacts(loaded);
+            setLoading(false);
+            // Drop ids that no longer exist (e.g. deleted elsewhere).
+            const valid = new Set(loaded.map((c) => c.id));
+            setSelected((prev) => {
+                const next = new Set([...prev].filter((id) => valid.has(id)));
+                if (next.size !== prev.size) saveSelectedIds([...next]);
+                return next;
             });
-            const data = await res.json();
-            alert(data.message || "Priority SMS notification dispatched successfully!");
-        } catch {
-            alert("Protocol error: SMS gateway unresponsive.");
+        })();
+    }, []);
+
+    const filtered = useMemo(() => {
+        const q = searchTerm.trim().toLowerCase();
+        if (!q) return contacts;
+        return contacts.filter(
+            (c) =>
+                c.name.toLowerCase().includes(q) ||
+                c.phone.replace(/\s/g, "").includes(q.replace(/\s/g, ""))
+        );
+    }, [contacts, searchTerm]);
+
+    /* ── Selection helpers ─────────────────────────────────────── */
+
+    const visibleIds = useMemo(() => filtered.map((c) => c.id), [filtered]);
+    const allVisibleSelected =
+        visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
+    const someVisibleSelected = visibleIds.some((id) => selected.has(id));
+
+    // Native indeterminate state (dash) when only part of the list is checked.
+    const selectAllRef = useRef<HTMLInputElement>(null);
+    useEffect(() => {
+        if (selectAllRef.current) {
+            selectAllRef.current.indeterminate =
+                !allVisibleSelected && someVisibleSelected;
         }
+    }, [allVisibleSelected, someVisibleSelected]);
+
+    const toggle = (id: string) => {
+        updateSelection((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const toggleSelectAll = () => {
+        updateSelection((prev) => {
+            const next = new Set(prev);
+            if (allVisibleSelected) {
+                visibleIds.forEach((id) => next.delete(id));
+            } else {
+                visibleIds.forEach((id) => next.add(id));
+            }
+            return next;
+        });
+    };
+
+    const clearSelection = () => updateSelection(() => new Set());
+
+    const notifySelected = () => {
+        const chosen = contacts.filter((c) => selected.has(c.id));
+        if (chosen.length === 0) return;
+        setPendingSelection(chosen.map((c) => ({ name: c.name, phone: c.phone })));
+        router.push("/notifications");
     };
 
     const handleExport = () => {
-        const headers = ["ID", "Full Name", "Phone Number", "Service", "Status"];
-        const rows = records.map(r => [r.id, r.fullName, r.phoneNumber, r.service, r.status]);
-        const csvContent = "data:text/csv;charset=utf-8,"
-            + headers.join(",") + "\n"
-            + rows.map(e => e.join(",")).join("\n");
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `citizen_records_${new Date().toISOString().split('T')[0]}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        const headers = ["Nom", "Téléphone", "Réseau", "Ajouté le"];
+        const rows = filtered.map((c) => {
+            const added = new Date(c.createdAt);
+            return [
+                c.name,
+                c.phone,
+                detectCamNetwork(c.phone),
+                Number.isNaN(added.getTime()) ? "" : added.toISOString().split("T")[0],
+            ];
+        });
+        downloadCsv(`contacts_${todayStamp()}.csv`, headers, rows);
+    };
+
+    const handleAdd = async () => {
+        const n = name.trim();
+        const p = phone.trim();
+        if (!n || !isValidCamPhone(p)) return;
+        setBusy(true);
+        await addRecipient(n, p);
+        setName("");
+        setPhone("");
+        await refresh();
+        setBusy(false);
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!confirm(t("contacts_delete_confirm"))) return;
+        await deleteRecipients([id]);
+        updateSelection((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+        });
+        await refresh();
+    };
+
+    const handleDeleteSelected = async () => {
+        const ids = [...selected];
+        if (ids.length === 0) return;
+        if (!confirm(t("contacts_delete_many_confirm").replace("{n}", String(ids.length)))) return;
+        await deleteRecipients(ids);
+        updateSelection(() => new Set());
+        await refresh();
     };
 
     return (
         <DashboardLayout>
-            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-10 gap-6 anim-fade-in">
+            <div className="flex items-start justify-between gap-3 mb-5">
                 <div>
-                    <h1 className="text-4xl font-black text-gray-900 tracking-tight">Records Registry</h1>
-                    <p className="text-gray-500 mt-2 font-bold flex items-center gap-2">
-                        <Filter className="w-4 h-4 text-blue-500" />
-                        Authenticated database management for administrative services
-                    </p>
+                    <h1 className="text-2xl font-black text-gray-900 tracking-tight">{t("contacts_title")}</h1>
+                    <p className="text-sm text-gray-500 font-medium mt-1">{t("contacts_subtitle")}</p>
                 </div>
-                <div className="flex flex-wrap items-center gap-4 w-full xl:w-auto">
+                <button
+                    onClick={handleExport}
+                    disabled={filtered.length === 0}
+                    className="flex items-center gap-1.5 text-xs font-black text-[#1e3a8a] bg-white border border-gray-200 rounded-xl px-3 py-2.5 shadow-sm transition-all hover:bg-blue-50 active:scale-95 disabled:opacity-40 disabled:pointer-events-none flex-shrink-0"
+                >
+                    <Download className="w-4 h-4" /> {t("contacts_export")}
+                </button>
+            </div>
+
+            {/* Add form */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 mb-4">
+                <p className="text-xs font-black text-gray-400 uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
+                    <UserPlus className="w-3.5 h-3.5" /> {t("contacts_add_title")}
+                </p>
+                <div className="flex gap-2">
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder={t("contacts_name")}
+                        className="flex-1 min-w-0 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-[#1e3a8a] transition-all placeholder:text-gray-300"
+                    />
+                    <input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+                        placeholder={t("contacts_phone")}
+                        className="w-36 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm font-mono focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-[#1e3a8a] transition-all placeholder:text-gray-300"
+                    />
                     <Button
-                        onClick={handleExport}
-                        variant="outline"
-                        className="flex-1 xl:flex-none flex items-center gap-3 border-gray-200 text-gray-700 font-black px-6 py-7 rounded-2xl hover:bg-gray-50 transition-all text-sm uppercase tracking-widest shadow-sm"
+                        onClick={handleAdd}
+                        disabled={busy || !name.trim() || !isValidCamPhone(phone)}
+                        className="bg-[#1e3a8a] hover:bg-blue-900 text-white font-black text-xs px-4 rounded-xl"
                     >
-                        <Download className="w-5 h-5" /> Export Data
+                        {t("contacts_add_btn")}
                     </Button>
-                    <Link href="/records/new" className="flex-1 xl:flex-none">
-                        <Button className="w-full flex items-center justify-center gap-3 bg-[#1e3a8a] text-white font-black px-8 py-7 rounded-2xl shadow-2xl shadow-blue-900/20 hover:bg-blue-900 transition-all hover:scale-[1.02] active:scale-[0.98] text-sm uppercase tracking-widest">
-                            <Plus className="w-5 h-5 mr-1" /> New Entry
-                        </Button>
-                    </Link>
                 </div>
             </div>
 
-            <div className="bg-white rounded-[2.5rem] shadow-xl shadow-gray-200/40 border border-gray-100 p-8 flex flex-col lg:flex-row items-center justify-between mb-10 gap-6 anim-slide-up">
-                <div className="flex flex-col md:flex-row items-center gap-6 flex-1 w-full relative">
-                    <div className="relative w-full lg:max-w-md group">
-                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-[#1e3a8a] transition-colors" />
-                        <input
-                            type="text"
-                            placeholder="Identify by name or contact number..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-14 pr-6 py-5 border-2 border-gray-50 bg-gray-50/30 rounded-2xl text-sm font-bold focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-[#1e3a8a] focus:bg-white transition-all placeholder:text-gray-400"
-                        />
-                    </div>
-
-                    <div className="flex gap-4 w-full md:w-auto">
-                        <div className="relative flex-1 md:w-56">
-                            <select
-                                value={serviceFilter}
-                                onChange={(e) => setServiceFilter(e.target.value)}
-                                className="w-full appearance-none pl-6 pr-12 py-5 border-2 border-gray-50 bg-gray-50/30 rounded-2xl text-xs font-black text-gray-700 uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-[#1e3a8a] cursor-pointer"
-                            >
-                                <option value="all">Every Service</option>
-                                <option value="Passport">Passport</option>
-                                <option value="ID Card">ID Card</option>
-                                <option value="Visa">Visa</option>
-                                <option value="Driver License">Driver License</option>
-                            </select>
-                            <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                        </div>
-
-                        <div className="relative flex-1 md:w-56">
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => setStatusFilter(e.target.value)}
-                                className="w-full appearance-none pl-6 pr-12 py-5 border-2 border-gray-50 bg-gray-50/30 rounded-2xl text-xs font-black text-gray-700 uppercase tracking-widest focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-[#1e3a8a] cursor-pointer"
-                            >
-                                <option value="all">Status Hierarchy</option>
-                                <option value="pending">Pending</option>
-                                <option value="processing">Processing</option>
-                                <option value="ready">Ready</option>
-                                <option value="on-hold">On Hold</option>
-                            </select>
-                            <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                        </div>
-                    </div>
+            {/* Search */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 mb-3">
+                <div className="relative">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder={t("contacts_search")}
+                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-[#1e3a8a] transition-all placeholder:text-gray-300"
+                    />
                 </div>
             </div>
 
-            <div className="bg-white rounded-[3rem] shadow-2xl shadow-gray-200/50 border border-gray-100 overflow-hidden anim-slide-up-delayed">
-                {loading ? (
-                    <div className="py-32 flex flex-col items-center justify-center gap-6">
-                        <div className="w-16 h-16 border-4 border-blue-50 border-t-[#1e3a8a] rounded-full animate-spin"></div>
-                        <div className="text-center">
-                            <p className="text-xl font-black text-gray-900 tracking-tight">Updating Registry</p>
-                            <p className="text-gray-400 font-bold uppercase tracking-[0.2em] text-xs mt-1">Fetching secure encrypted data</p>
-                        </div>
+            {/* List */}
+            {loading ? (
+                <div className="flex items-center justify-center py-24">
+                    <Loader2 className="w-8 h-8 text-[#1e3a8a] animate-spin" />
+                </div>
+            ) : filtered.length === 0 ? (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 py-16 text-center">
+                    <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Users className="w-7 h-7 text-gray-300" />
                     </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse min-w-[1000px]">
-                            <thead>
-                                <tr className="bg-gray-50/40 text-[10px] font-black text-gray-400 uppercase tracking-[0.3em] border-b border-gray-100">
-                                    <th className="px-10 py-8">Identity Profile</th>
-                                    <th className="px-10 py-8">Communication Line</th>
-                                    <th className="px-10 py-8">Service Stream</th>
-                                    <th className="px-10 py-8">Progress State</th>
-                                    <th className="px-10 py-8 text-right">Administrative Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-50 font-bold text-sm">
-                                {records.map((record: Citizen) => (
-                                    <tr key={record.id} className="hover:bg-blue-50/20 transition-all group">
-                                        <td className="px-10 py-8">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center text-xs font-black text-gray-500 shadow-inner group-hover:from-blue-500 group-hover:to-[#1e3a8a] group-hover:text-white transition-all transform group-hover:rotate-6">
-                                                    {record.fullName.split(' ').map(n => n[0]).join('')}
-                                                </div>
-                                                <div>
-                                                    <p className="text-gray-900 font-black text-lg group-hover:text-[#1e3a8a] transition-colors">{record.fullName}</p>
-                                                    <p className="text-gray-400 font-black text-[10px] uppercase tracking-widest mt-1 flex items-center gap-1.5">
-                                                        <Copy className="w-3 h-3" /> UID-{record.id.substring(0, 10)}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-10 py-8 text-gray-600 font-mono text-base tracking-tight">{record.phoneNumber}</td>
-                                        <td className="px-10 py-8">
-                                            <span className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl text-xs font-black uppercase tracking-widest border border-gray-200 group-hover:bg-white transition-colors">{record.service}</span>
-                                        </td>
-                                        <td className="px-10 py-8">
-                                            <span className={`px-5 py-2.5 rounded-full text-[10px] font-black uppercase tracking-[0.15em] border flex items-center w-fit gap-2 shadow-sm ${record.status === 'ready' ? 'bg-green-50 text-green-700 border-green-100' :
-                                                record.status === 'processing' ? 'bg-orange-50 text-orange-700 border-orange-100' :
-                                                    record.status === 'pending' ? 'bg-blue-50 text-blue-700 border-blue-100' :
-                                                        'bg-red-50 text-red-700 border-red-100'
-                                                }`}>
-                                                <div className={`w-2 h-2 rounded-full ${record.status === 'ready' ? 'bg-green-500' :
-                                                    record.status === 'processing' ? 'bg-orange-500' :
-                                                        record.status === 'pending' ? 'bg-blue-500' :
-                                                            'bg-red-500'
-                                                    } animate-pulse`}></div>
-                                                {record.status}
-                                            </span>
-                                        </td>
-                                        <td className="px-10 py-8">
-                                            <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-all transform translate-x-4 group-hover:translate-x-0">
-                                                <Button variant="ghost" size="sm" onClick={() => handleSendSMS(record.id)} className="h-12 w-12 p-0 hover:text-green-600 hover:bg-green-50 rounded-2xl shadow-sm bg-white border border-gray-100 transition-all hover:scale-110" title="Dispatch SMS">
-                                                    <Bell className="w-5 h-5" />
-                                                </Button>
-                                                <Link href={`/records?edit=${record.id}`}>
-                                                    <Button variant="ghost" size="sm" className="h-12 w-12 p-0 hover:text-blue-600 hover:bg-blue-50 rounded-2xl shadow-sm bg-white border border-gray-100 transition-all hover:scale-110" title="Modify Record">
-                                                        <Edit3 className="w-5 h-5" />
-                                                    </Button>
-                                                </Link>
-                                                <Button variant="ghost" size="sm" onClick={() => handleDelete(record.id)} className="h-12 w-12 p-0 hover:text-red-600 hover:bg-red-50 rounded-2xl shadow-sm bg-white border border-gray-100 transition-all hover:scale-110" title="Revoke Entry">
-                                                    <Trash2 className="w-5 h-5" />
-                                                </Button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                                {records.length === 0 && (
-                                    <tr>
-                                        <td colSpan={5} className="px-10 py-32 text-center">
-                                            <div className="flex flex-col items-center gap-4">
-                                                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center">
-                                                    <XCircle className="w-10 h-10 text-gray-200" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-xl font-black text-gray-900 tracking-tight">Zero Matches Identified</p>
-                                                    <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">Verify search parameters or filters</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
+                    <p className="font-black text-gray-900">{t("contacts_empty")}</p>
+                </div>
+            ) : (
+                <div className="space-y-2.5">
+                    {/* Select all row */}
+                    {contacts.length > 0 && (
+                        <div className="flex items-center justify-between px-1">
+                            <label className="flex items-center gap-2 text-xs font-black text-[#1e3a8a] cursor-pointer transition-colors hover:text-blue-900">
+                                <input
+                                    type="checkbox"
+                                    ref={selectAllRef}
+                                    checked={allVisibleSelected}
+                                    onChange={toggleSelectAll}
+                                    className="w-5 h-5 accent-[#1e3a8a] cursor-pointer"
+                                />
+                                {allVisibleSelected
+                                    ? t("contacts_select_none")
+                                    : t("contacts_select_all")}
+                            </label>
+                            {selected.size > 0 && (
+                                <span className="text-xs font-black text-gray-400">
+                                    {selected.size} {t("contacts_selected")}
+                                </span>
+                            )}
+                        </div>
+                    )}
+
+                    {filtered.map((c) => {
+                        const isSelected = selected.has(c.id);
+                        return (
+                            <label
+                                key={c.id}
+                                className={cn(
+                                    "bg-white rounded-2xl shadow-sm border p-4 flex items-center gap-3 cursor-pointer transition-all active:scale-[0.99]",
+                                    isSelected
+                                        ? "border-[#1e3a8a] ring-2 ring-blue-100"
+                                        : "border-gray-100"
                                 )}
-                            </tbody>
-                        </table>
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => toggle(c.id)}
+                                    className="w-5 h-5 accent-[#1e3a8a] flex-shrink-0"
+                                />
+                                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#1e3a8a] to-blue-600 text-white flex items-center justify-center font-black text-sm flex-shrink-0">
+                                    {c.name
+                                        .split(" ")
+                                        .map((n) => n[0])
+                                        .slice(0, 2)
+                                        .join("")
+                                        .toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-black text-gray-900 truncate">{c.name}</p>
+                                    <p className="text-xs text-gray-400 font-mono truncate">{c.phone}</p>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                    <span className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-50 text-gray-500 text-[10px] font-black uppercase tracking-wider">
+                                        <Smartphone className="w-3 h-3" />
+                                        {detectCamNetwork(c.phone)}
+                                    </span>
+                                    <button
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            handleDelete(c.id);
+                                        }}
+                                        className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                        aria-label={t("common_delete")}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            </label>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Sticky action bar: notify / delete the selection */}
+            {selected.size > 0 && (
+                <div className="sticky bottom-[76px] md:bottom-4 z-20 mt-3">
+                    <div className="bg-white rounded-2xl shadow-xl shadow-gray-900/10 border border-gray-100 p-2.5">
+                        <div className="flex items-center justify-between px-2 pb-2 gap-3">
+                            <p className="text-sm font-black text-gray-900 leading-tight">
+                                {selected.size} {t("contacts_selected")}
+                            </p>
+                            <p className="text-[10px] text-gray-400 font-medium truncate">
+                                {t("contacts_notify_hint")}
+                            </p>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleDeleteSelected}
+                                className="flex items-center gap-1.5 text-xs font-black text-red-600 bg-white border border-red-200 rounded-xl px-3 py-2.5 transition-all hover:bg-red-50 active:scale-95 flex-shrink-0 whitespace-nowrap"
+                            >
+                                <Trash2 className="w-4 h-4" />
+                                {t("contacts_delete_selected")} ({selected.size})
+                            </button>
+                            <button
+                                onClick={clearSelection}
+                                className="text-xs font-black text-gray-400 hover:text-gray-700 px-2 py-2.5 rounded-xl transition-colors flex-shrink-0"
+                            >
+                                {t("common_cancel")}
+                            </button>
+                            <button
+                                onClick={notifySelected}
+                                className="flex-1 flex items-center justify-center gap-2 bg-[#1e3a8a] hover:bg-blue-900 text-white font-black text-sm px-4 py-3 rounded-xl shadow-lg shadow-blue-900/20 transition-all active:scale-95"
+                            >
+                                <Send className="w-4 h-4" />
+                                {t("contacts_notify")} ({selected.size})
+                            </button>
+                        </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </DashboardLayout>
     );
 }

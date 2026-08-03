@@ -28,6 +28,18 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# local tooling artifacts (npm/npx/corepack wrappers)
+npm
+npm.cmd
+npm.ps1
+npx
+npx.cmd
+npx.ps1
+corepack
+corepack.cmd
+nodevars.bat
+install_tools.bat
+
 # vercel
 .vercel
 

@@ -1,121 +1,147 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Lock } from "lucide-react";
+import { Bell, Lock, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { useTranslation } from "@/lib/lang-context";
+import { getMode, setLoggedIn } from "@/lib/data";
+
+const DEMO_EMAIL = "admin@nnlomne.gov";
+const DEMO_PASSWORD = "password";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const router = useRouter();
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState("");
+    const router = useRouter();
+    const { t, lang, setLang } = useTranslation();
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
+    const isFirebaseMode = getMode() === "firebase";
 
-    // Special case for initial setup (Mock login)
-    if (email === "admin@nnlomne.gov" && password === "password") {
-      localStorage.setItem("userRole", "admin");
-      localStorage.setItem("institutionId", "nnlomne");
-      router.push("/dashboard");
-      return;
-    }
+    const handleLogin = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setError("");
 
-    try {
-      await signInWithEmailAndPassword(auth, email, password);
-      localStorage.setItem("institutionId", "nnlomne"); // Default for now
-      router.push("/dashboard");
-    } catch (err: unknown) {
-      setError("Invalid credentials. Use admin@nnlomne.gov / password for testing.");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+        try {
+            if (isFirebaseMode) {
+                await signInWithEmailAndPassword(auth, email, password);
+            } else {
+                // Local demo mode: fixed admin credentials.
+                if (email.trim().toLowerCase() !== DEMO_EMAIL || password !== DEMO_PASSWORD) {
+                    throw new Error("invalid");
+                }
+            }
+            setLoggedIn();
+            router.push("/dashboard");
+        } catch {
+            setError(isFirebaseMode ? t("login_error_firebase") : t("login_error"));
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  return (
-    <div className="min-h-screen bg-[#f8fafc] bg-dot-pattern flex items-center justify-center flex-col relative py-12 px-4 sm:px-6 lg:px-8 font-sans">
-      <div className="max-w-md w-full space-y-8 flex flex-col items-center">
-        <div className="flex flex-col items-center">
-          <div className="w-16 h-16 bg-[#1e3a8a] rounded-xl flex items-center justify-center shadow-lg mb-6">
-            <Bell className="w-8 h-8 text-white" />
-          </div>
-          <h2 className="text-3xl font-bold text-gray-900 tracking-tight text-center">
-            NNLOMNE Notify
-          </h2>
-          <p className="mt-2 text-sm text-gray-600 text-center">
-            Smart notifications for administrative services
-          </p>
-        </div>
-
-        <div className="w-full bg-white shadow-xl rounded-2xl p-8 border border-gray-100 z-10 glass-card">
-          <form className="space-y-6" onSubmit={handleLogin}>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email Address
-              </label>
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="name@agency.gov"
-                className="appearance-none block w-full px-4 py-3 border border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] focus:border-transparent transition-all"
-              />
+    return (
+        <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center flex-col relative py-12 px-4 font-sans">
+            {/* Language toggle */}
+            <div className="absolute top-6 right-6 flex items-center gap-1 bg-white rounded-2xl p-1 shadow-md border border-gray-100">
+                {(["fr", "en"] as const).map((l) => (
+                    <button
+                        key={l}
+                        onClick={() => setLang(l)}
+                        className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                            lang === l
+                                ? "bg-[#1e3a8a] text-white shadow-md"
+                                : "text-gray-500 hover:text-gray-900"
+                        }`}
+                    >
+                        <Languages className="w-3 h-3" /> {l}
+                    </button>
+                ))}
             </div>
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="block text-sm font-medium text-gray-700">
-                  Password
-                </label>
-                <div className="text-sm">
-                  <a href="#" className="font-semibold text-[#1e3a8a] hover:text-blue-800 transition-colors">
-                    Forgot password?
-                  </a>
+
+            <div className="w-full max-w-sm space-y-8 flex flex-col items-center">
+                <div className="flex flex-col items-center">
+                    <div className="w-16 h-16 bg-[#1e3a8a] rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/20 mb-5">
+                        <Bell className="w-8 h-8 text-white" />
+                    </div>
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tight text-center">
+                        {t("login_title")}
+                    </h1>
+                    <p className="mt-1.5 text-sm text-gray-500 text-center font-medium">
+                        {t("login_subtitle")}
+                    </p>
                 </div>
-              </div>
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="appearance-none block w-full px-4 py-3 border border-gray-200 rounded-lg placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#1e3a8a] focus:border-transparent transition-all font-mono"
-              />
+
+                <div className="w-full bg-white shadow-xl rounded-3xl p-6 border border-gray-100">
+                    {!isFirebaseMode && (
+                        <div className="mb-5 px-3.5 py-2.5 bg-blue-50 border border-blue-100 rounded-xl text-xs text-blue-800 font-bold">
+                            🔑 {t("login_demo_hint")}
+                        </div>
+                    )}
+
+                    <form className="space-y-4" onSubmit={handleLogin}>
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-1.5">
+                                {t("login_email")}
+                            </label>
+                            <input
+                                type="email"
+                                required
+                                autoComplete="email"
+                                value={email}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                    setEmail(e.target.value)
+                                }
+                                placeholder="admin@nnlomne.gov"
+                                className="appearance-none block w-full px-4 py-3 border border-gray-200 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-[#1e3a8a] transition-all text-sm font-medium"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-bold text-gray-700 mb-1.5">
+                                {t("login_password")}
+                            </label>
+                            <input
+                                type="password"
+                                required
+                                autoComplete="current-password"
+                                value={password}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                                    setPassword(e.target.value)
+                                }
+                                placeholder="••••••••"
+                                className="appearance-none block w-full px-4 py-3 border border-gray-200 rounded-xl placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-[#1e3a8a] transition-all font-mono"
+                            />
+                        </div>
+
+                        {error && (
+                            <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl">
+                                {error}
+                            </div>
+                        )}
+
+                        <Button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full bg-[#1e3a8a] hover:bg-blue-900 text-white py-4 rounded-xl font-black shadow-lg shadow-blue-900/20 transition-all active:scale-[0.98]"
+                        >
+                            {loading ? t("login_loading") : t("login_btn")}
+                        </Button>
+
+                        <div className="pt-2 flex items-center justify-center gap-2 text-gray-400 text-xs border-t border-gray-100">
+                            <Lock className="w-3.5 h-3.5" />
+                            <span>{t("login_secure")}</span>
+                        </div>
+                    </form>
+                </div>
+
+                <p className="text-center text-xs text-gray-400">{t("login_rights")}</p>
             </div>
-
-            {error && (
-              <div className="p-3 mb-4 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg">
-                {error}
-              </div>
-            )}
-
-            <Button type="submit" disabled={loading} className="w-full bg-[#1e3a8a] hover:bg-blue-900 text-white py-6 rounded-xl font-semibold shadow-lg transition-all active:scale-[0.98]">
-              {loading ? "Signing in..." : "Sign In"}
-            </Button>
-
-            <div className="pt-4 flex items-center justify-center space-x-2 text-gray-400 text-xs border-t border-gray-100 mt-6">
-              <Lock className="w-3.5 h-3.5" />
-              <span>Secure Government Access Only</span>
-            </div>
-          </form>
         </div>
-      </div>
-
-      <div className="absolute bottom-8 w-full text-center text-sm text-gray-500">
-        <p>© 2023 NNLOMNE Administrative Services.</p>
-        <div className="flex items-center justify-center gap-2 mt-1">
-          <a href="#" className="hover:text-gray-900 transition-colors">Terms of Service</a>
-          <span>•</span>
-          <a href="#" className="hover:text-gray-900 transition-colors">Privacy Policy</a>
-        </div>
-      </div>
-    </div>
-  );
+    );
 }

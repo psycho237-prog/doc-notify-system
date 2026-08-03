@@ -13,3 +13,6 @@ frontend/.next/
 # Firebase service account keys - NEVER commit these!
 *firebase-adminsdk*.json
 *service-account*.json
+
+# Local helper scripts (not part of the project)
+push.bat
