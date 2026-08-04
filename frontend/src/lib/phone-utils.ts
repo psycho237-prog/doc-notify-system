@@ -46,10 +46,11 @@ export function formatCamPhone(phone: string): string {
     return `+237${clean}`;
 }
 
-/** Validates a Cameroonian mobile number (MTN / Orange / Camtel). */
+/** Validates a Cameroonian mobile number (MTN / Orange / Camtel).
+ *  Accepts both local format (696814391) and international (+237696814391). */
 export function isValidCamPhone(phone: string): boolean {
     const clean = normalizeCamPhone(phone).replace(/^\+/, "");
-    return /^237[69]\d{8}$/.test(clean);
+    return /^(237)?[69]\d{8}$/.test(clean);
 }
 
 /**
