@@ -129,20 +129,41 @@ const STATUS_COLOR: Record<PdfStatus, [number, number, number]> = {
 };
 
 function wrapText(text: string, maxWidth: number, size: number, bold: boolean): string[] {
-    const words = text.split(" ");
     const lines: string[] = [];
     let current = "";
-    for (const word of words) {
+    const flush = (s: string) => {
+        // Hard-break words longer than the column (URLs, phone numbers, …).
+        while (textWidth(s, size, bold) > maxWidth && s.length > 1) {
+            let cut = s.length;
+            while (cut > 1 && textWidth(s.slice(0, cut), size, bold) > maxWidth) cut--;
+            lines.push(s.slice(0, cut));
+            s = s.slice(cut);
+        }
+        lines.push(s);
+    };
+    for (const word of text.split(" ")) {
         const candidate = current ? `${current} ${word}` : word;
-        if (textWidth(candidate, size, bold) <= maxWidth || !current) {
+        if (!current || textWidth(candidate, size, bold) <= maxWidth) {
             current = candidate;
         } else {
-            lines.push(current);
+            flush(current);
             current = word;
         }
     }
-    if (current) lines.push(current);
+    if (current) flush(current);
     return lines.length ? lines : [""];
+}
+
+/** Fits a string into a column, replacing the tail with an ellipsis when it overflows. */
+function truncateCell(text: string, maxWidth: number, size: number, bold: boolean): string {
+    if (textWidth(text, size, bold) <= maxWidth) return text;
+    const ellipsis = "…";
+    let out = "";
+    for (const ch of text) {
+        if (textWidth(out + ch + ellipsis, size, bold) > maxWidth) break;
+        out += ch;
+    }
+    return out + ellipsis;
 }
 
 /* ── PDF builder ─────────────────────────────────────────────────── */
@@ -244,8 +265,8 @@ export function buildSmsReportPdf(opts: PdfReportOptions): string {
         };
 
         cell(COL_N, String(i + 1), 8, false, BODY);
-        cell(COL_NAME, row.name, fontSize, false, BODY);
-        cell(COL_PHONE, row.phone, fontSize, false, BODY);
+        cell(COL_NAME, truncateCell(row.name, COL_NAME - 8, fontSize, false), fontSize, false, BODY);
+        cell(COL_PHONE, truncateCell(row.phone, COL_PHONE - 8, fontSize, false), fontSize, false, BODY);
         cell(COL_DATE, row.date, 8, false, BODY);
         cell(COL_TIME, row.time, 8, false, BODY);
 
@@ -255,7 +276,7 @@ export function buildSmsReportPdf(opts: PdfReportOptions): string {
         });
 
         x += COL_MESSAGE;
-        cell(COL_STATUS, statusLabel[row.status], 8.5, true, STATUS_COLOR[row.status]);
+        cell(COL_STATUS, truncateCell(statusLabel[row.status], COL_STATUS - 8, 8.5, true), 8.5, true, STATUS_COLOR[row.status]);
         y -= rowHeight;
     });
 

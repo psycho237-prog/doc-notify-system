@@ -32,15 +32,31 @@ export function InstallBanner() {
     if (!canInstall || dismissed || installed) return null;
 
     return (
-        <div className="bg-gradient-to-r from-[#1e3a8a] to-blue-700 rounded-2xl shadow-lg shadow-blue-900/20 text-white p-4 mb-5 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
-                <Smartphone className="w-5 h-5" />
-            </div>
-            <div className="flex-1 min-w-0">
-                <p className="text-sm font-black">{t("pwa_banner_title")}</p>
-                <p className="text-[11px] text-blue-100 font-medium mt-0.5">
-                    {t("pwa_banner_desc")}
-                </p>
+        <div className="bg-gradient-to-r from-[#1e3a8a] to-blue-700 rounded-2xl shadow-lg shadow-blue-900/20 text-white p-4 mb-5 flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-start gap-3 flex-1 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+                    <Smartphone className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-sm font-black leading-tight">{t("pwa_banner_title")}</p>
+                    <p className="text-[11px] text-blue-100 font-medium mt-0.5 leading-snug">
+                        {t("pwa_banner_desc")}
+                    </p>
+                </div>
+                <button
+                    onClick={() => {
+                        try {
+                            window.localStorage.setItem(DISMISS_KEY, "1");
+                        } catch {
+                            /* storage unavailable */
+                        }
+                        setDismissed(true);
+                    }}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg text-blue-200 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0 -mt-1 -mr-1 sm:mt-0 sm:mr-0 sm:self-center"
+                    aria-label={t("common_close")}
+                >
+                    <X className="w-4 h-4" />
+                </button>
             </div>
             <button
                 onClick={async () => {
@@ -50,7 +66,7 @@ export function InstallBanner() {
                         setTimeout(() => setInstalled(false), 3000);
                     }
                 }}
-                className="flex items-center gap-1.5 bg-white text-[#1e3a8a] text-xs font-black px-3.5 py-2.5 rounded-xl shadow-sm transition-all hover:bg-blue-50 active:scale-95 flex-shrink-0"
+                className="w-full sm:w-auto flex items-center justify-center gap-1.5 bg-white text-[#1e3a8a] text-xs font-black px-4 py-2.5 rounded-xl shadow-sm transition-all hover:bg-blue-50 active:scale-95 flex-shrink-0"
             >
                 {installed ? (
                     <>
@@ -61,20 +77,6 @@ export function InstallBanner() {
                         <Download className="w-4 h-4" /> {t("settings_pwa_install")}
                     </>
                 )}
-            </button>
-            <button
-                onClick={() => {
-                    try {
-                        window.localStorage.setItem(DISMISS_KEY, "1");
-                    } catch {
-                        /* storage unavailable */
-                    }
-                    setDismissed(true);
-                }}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-blue-200 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
-                aria-label={t("common_close")}
-            >
-                <X className="w-4 h-4" />
             </button>
         </div>
     );
