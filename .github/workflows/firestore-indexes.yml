@@ -1,0 +1,47 @@
+name: Deploy Firestore indexes
+
+# Runs automatically when the index definition changes, and can also be
+# triggered manually from the Actions tab (needed for the first deploy).
+on:
+  push:
+    branches: [master]
+    paths:
+      - "backend/firestore.indexes.json"
+  workflow_dispatch:
+
+jobs:
+  deploy-indexes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools
+
+      # Authenticate with a Firebase service account (Application Default
+      # Credentials) — no interactive login needed. The secret must contain
+      # the full service-account key JSON (same file used for Vercel's
+      # FIREBASE_SERVICE_ACCOUNT_JSON variable).
+      - name: Write service account credentials
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT_JSON" ]; then
+            echo "::error::Missing FIREBASE_SERVICE_ACCOUNT_JSON secret — add the service account key JSON in Settings > Secrets > Actions."
+            exit 1
+          fi
+          echo "$FIREBASE_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/firebase-service-account.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
+
+      - name: Deploy Firestore indexes
+        run: |
+          cd backend
+          firebase deploy --only firestore:indexes --project nnlomne
