@@ -194,8 +194,15 @@ export function migrateLegacy(): void {
 
 function sanitizeUser(user: UserAccount | null | undefined): UserAccount | null {
     if (!user) return null;
-    const { password: _password, ...rest } = user;
-    return rest;
+    // Never leak the password field (it only exists in local mode).
+    return {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        createdAt: user.createdAt,
+        disabled: user.disabled,
+    };
 }
 
 /** Current logged-in user id, or the default admin when not logged in. */
