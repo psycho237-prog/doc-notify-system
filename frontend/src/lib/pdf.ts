@@ -322,7 +322,9 @@ export function downloadSmsReportPdf(filename: string, opts: PdfReportOptions): 
 
 export function downloadBlob(filename: string, bytes: Uint8Array, mime = "application/pdf"): void {
     if (typeof window === "undefined") return;
-    const blob = new Blob([bytes], { type: mime });
+    // Copy into a fresh ArrayBuffer-backed view (newer TS libs type the
+    // parameter as Uint8Array<ArrayBuffer>; also drops any subarray offset).
+    const blob = new Blob([new Uint8Array(bytes)], { type: mime });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
