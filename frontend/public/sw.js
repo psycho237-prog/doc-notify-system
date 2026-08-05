@@ -4,14 +4,24 @@
  *  - static assets (JS/CSS/fonts/images): stale-while-revalidate
  *  - /api/* requests: network only (never cached, avoids stale data)
  */
-const CACHE = "nnlomne-cache-v1";
-const SHELL = ["/", "/manifest.webmanifest", "/icons/icon.svg"];
+const CACHE = "nnlomne-cache-v2";
+const SHELL = ["/", "/manifest.webmanifest", "/icons/icon.svg", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE)
-      .then((cache) => cache.addAll(SHELL))
+      .then((cache) =>
+        // Cache each shell asset individually so one failure (e.g. a 404 icon)
+        // never prevents the service worker from installing.
+        Promise.all(
+          SHELL.map((url) =>
+            cache.add(url).catch(() => {
+              /* skip unavailable asset */
+            })
+          )
+        )
+      )
       .then(() => self.skipWaiting())
   );
 });
@@ -42,7 +52,9 @@ self.addEventListener("fetch", (event) => {
           caches.open(CACHE).then((cache) => cache.put("/", copy));
           return res;
         })
-        .catch(() => caches.match("/"))
+        .catch(() =>
+          caches.match("/").then((cached) => cached || new Response("Offline", { status: 503 }))
+        )
     );
     return;
   }
@@ -58,7 +70,7 @@ self.addEventListener("fetch", (event) => {
           }
           return res;
         })
-        .catch(() => cached);
+        .catch(() => cached || new Response("Offline", { status: 503 }));
       return cached || network;
     })
   );

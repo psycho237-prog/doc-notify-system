@@ -6,7 +6,7 @@
  * Node's built-in zlib.
  */
 import { deflateSync } from "node:zlib";
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -161,4 +161,16 @@ function renderIcon(size) {
 
 writeFileSync(join(OUT_DIR, "icon-512.png"), renderIcon(512));
 writeFileSync(join(OUT_DIR, "icon-192.png"), renderIcon(192));
+
+// Verify the outputs actually landed and look like real PNGs — fail loudly
+// instead of silently shipping a build with a broken, non-installable PWA.
+const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+for (const name of ["icon-512.png", "icon-192.png"]) {
+    const p = join(OUT_DIR, name);
+    const buf = existsSync(p) ? readFileSync(p) : null;
+    if (!buf || buf.length < 1000 || !buf.subarray(0, 8).equals(PNG_SIG)) {
+        throw new Error(`Icon generation failed: ${p} is missing, too small, or not a valid PNG`);
+    }
+}
+
 console.log("Icons written to", OUT_DIR);

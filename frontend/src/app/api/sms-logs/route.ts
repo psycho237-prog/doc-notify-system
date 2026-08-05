@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDB } from "@/lib/firebase-admin";
+import { getAdminDB, isAdminConfigured } from "@/lib/firebase-admin";
+import { forbidden, requireAuth, unauthorized } from "@/lib/api-auth";
 
-/** GET /api/sms-logs?institutionId=xxx&status=sent|failed&date=yyyy-mm-dd&search=xxx */
+/** GET /api/sms-logs?institutionId=xxx&userId=xxx&status=sent|failed&date=yyyy-mm-dd&search=xxx */
 export async function GET(req: NextRequest) {
+    if (!isAdminConfigured()) {
+        return NextResponse.json({ error: "Firebase is not configured" }, { status: 503 });
+    }
+    const session = await requireAuth(req);
+    if (!session) return unauthorized();
     try {
         const { searchParams } = new URL(req.url);
         const institutionId = searchParams.get("institutionId");
@@ -10,11 +16,16 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "institutionId is required" }, { status: 400 });
         }
 
+        // Users may only read their own logs; super admins may read any account.
+        const userId = searchParams.get("userId");
+        if (!userId) {
+            return NextResponse.json({ error: "userId is required" }, { status: 400 });
+        }
+        if (userId !== session.auth.uid && !session.isAdmin) return forbidden();
+
         const db = getAdminDB();
         let query = db.collection("sms_logs").where("institutionId", "==", institutionId) as FirebaseFirestore.Query;
-
-        const userId = searchParams.get("userId");
-        if (userId) query = query.where("userId", "==", userId);
+        query = query.where("userId", "==", userId);
 
         const status = searchParams.get("status");
         if (status && status !== "all") query = query.where("status", "==", status);

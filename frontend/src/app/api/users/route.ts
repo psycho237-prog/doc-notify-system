@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "firebase-admin/auth";
 import { getAdminApp, getAdminDB, isAdminConfigured } from "@/lib/firebase-admin";
+import { forbidden, requireAuth } from "@/lib/api-auth";
 
-/** GET /api/users — list all user accounts (role + profile). */
-export async function GET() {
+/** GET /api/users — list all user accounts (role + profile, super admin only). */
+export async function GET(req: NextRequest) {
     if (!isAdminConfigured()) {
         return NextResponse.json({ error: "Firebase is not configured" }, { status: 503 });
     }
+    const session = await requireAuth(req, { admin: true });
+    if (!session) return forbidden();
     try {
         const db = getAdminDB();
         const snap = await db.collection("users").orderBy("createdAt", "asc").limit(200).get();
@@ -20,11 +23,13 @@ export async function GET() {
     }
 }
 
-/** POST /api/users — create a Firebase Auth user + role document. */
+/** POST /api/users — create a Firebase Auth user + role document (super admin only). */
 export async function POST(req: NextRequest) {
     if (!isAdminConfigured()) {
         return NextResponse.json({ error: "Firebase is not configured" }, { status: 503 });
     }
+    const session = await requireAuth(req, { admin: true });
+    if (!session) return forbidden();
     try {
         const body = await req.json();
         const { name, email, password, role } = body as {

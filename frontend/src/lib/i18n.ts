@@ -27,6 +27,8 @@ export const translations = {
     nav_settings: { fr: "Réglages", en: "Settings" },
     nav_admin: { fr: "Administrateur", en: "Administrator" },
     nav_logout: { fr: "Déconnexion", en: "Log out" },
+    nav_more: { fr: "Plus", en: "More" },
+    nav_more_title: { fr: "Toutes les sections", en: "All sections" },
     nav_brand_sub: { fr: "Notifications SMS", en: "SMS Notifications" },
 
     // ─── Dashboard ───────────────────────────────────────────────────
@@ -284,6 +286,8 @@ export const translations = {
     settings_cleanup_admin_only: { fr: "Réglage réservé au super administrateur", en: "Super administrator setting" },
     settings_pwa: { fr: "Application installable", en: "Installable app" },
     settings_pwa_desc: { fr: "Installez NNLOMNE Notify sur cet appareil pour l'utiliser hors ligne (enregistrer des contacts, mettre en file les envois).", en: "Install NNLOMNE Notify on this device to use it offline (save contacts, queue sends)." },
+    pwa_banner_title: { fr: "Installer l'application ?", en: "Install the app?" },
+    pwa_banner_desc: { fr: "Utilisez NNLOMNE Notify hors ligne : enregistrez des contacts et envoyez les notifications plus tard.", en: "Use NNLOMNE Notify offline: save contacts and send notifications later." },
     settings_pwa_install: { fr: "Installer l'application", en: "Install app" },
     settings_pwa_installed: { fr: "Application installée ✓", en: "App installed ✓" },
     settings_pwa_unsupported: { fr: "Utilisez Chrome pour installer l'application sur cet appareil.", en: "Use Chrome to install the app on this device." },

@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDB } from "@/lib/firebase-admin";
+import { getAdminDB, isAdminConfigured } from "@/lib/firebase-admin";
+import { forbidden, requireAuth, unauthorized } from "@/lib/api-auth";
 
-/** GET /api/dashboard?institutionId=xxx  — aggregate statistics */
+/** GET /api/dashboard?institutionId=xxx&userId=xxx  — aggregate statistics */
 export async function GET(req: NextRequest) {
+    if (!isAdminConfigured()) {
+        return NextResponse.json({ error: "Firebase is not configured" }, { status: 503 });
+    }
+    const session = await requireAuth(req);
+    if (!session) return unauthorized();
     try {
         const { searchParams } = new URL(req.url);
         const institutionId = searchParams.get("institutionId");
@@ -10,10 +16,16 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "institutionId is required" }, { status: 400 });
         }
 
-        const db = getAdminDB();
+        // Users may only read their own stats; super admins may read any account.
         const userId = searchParams.get("userId");
+        if (!userId) {
+            return NextResponse.json({ error: "userId is required" }, { status: 400 });
+        }
+        if (userId !== session.auth.uid && !session.isAdmin) return forbidden();
+
+        const db = getAdminDB();
         const byUser = (q: FirebaseFirestore.Query) =>
-            userId ? (q.where("userId", "==", userId) as FirebaseFirestore.Query) : q;
+            q.where("userId", "==", userId) as FirebaseFirestore.Query;
         const base = byUser(
             db.collection("citizens").where("institutionId", "==", institutionId)
         );

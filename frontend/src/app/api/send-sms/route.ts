@@ -5,6 +5,8 @@ import {
     sanitizeSmsMessage,
 } from "@/lib/phone-utils";
 import { getAdminDB, isAdminConfigured } from "@/lib/firebase-admin";
+import { requireAuth, unauthorized } from "@/lib/api-auth";
+import type { AuthSession } from "@/lib/api-auth";
 
 interface IncomingRecipient {
     name?: string;
@@ -46,6 +48,16 @@ export async function POST(req: NextRequest) {
             simulate?: boolean;
             userId?: string;
         };
+
+        // On fully configured deployments, only authenticated users may send SMS
+        // (the verified uid is used for logging — the client-supplied one is ignored).
+        // Local/demo deployments (no Firebase service account) stay open so the
+        // zero-config local mode keeps working.
+        let session: AuthSession | null = null;
+        if (isAdminConfigured()) {
+            session = await requireAuth(req);
+            if (!session) return unauthorized();
+        }
 
         if (!Array.isArray(recipients) || recipients.length === 0) {
             return NextResponse.json(
@@ -142,6 +154,7 @@ export async function POST(req: NextRequest) {
                 const db = getAdminDB();
                 const batch = db.batch();
                 const col = db.collection("sms_logs");
+                const loggedUserId = session ? session.auth.uid : (userId ?? null);
                 for (const r of results) {
                     batch.set(col.doc(), {
                         citizenName: r.name,
@@ -150,7 +163,7 @@ export async function POST(req: NextRequest) {
                         status: r.status,
                         error: r.error ?? null,
                         institutionId: "nnlomne",
-                        userId: userId ?? null,
+                        userId: loggedUserId,
                         sentAt: FieldValue.serverTimestamp(),
                     });
                 }

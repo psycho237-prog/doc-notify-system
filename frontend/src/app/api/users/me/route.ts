@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB, isAdminConfigured } from "@/lib/firebase-admin";
+import { requireAuth, unauthorized } from "@/lib/api-auth";
 
 /**
  * POST /api/users/me — bootstrap the first super admin in Firebase mode.
@@ -14,13 +15,15 @@ export async function POST(req: NextRequest) {
     if (!isAdminConfigured()) {
         return NextResponse.json({ error: "Firebase is not configured" }, { status: 503 });
     }
+    const session = await requireAuth(req);
+    if (!session) return unauthorized();
     try {
-        const body = await req.json();
-        const { uid, email } = body as { uid?: string; email?: string };
-        if (!uid || !email) {
+        // The verified ID token is the source of truth — never trust client uid/email.
+        const uid = session.auth.uid;
+        const normalizedEmail = String(session.auth.email ?? "").trim().toLowerCase();
+        if (!uid || !normalizedEmail) {
             return NextResponse.json({ error: "uid and email are required" }, { status: 400 });
         }
-        const normalizedEmail = String(email).trim().toLowerCase();
 
         const db = getAdminDB();
         const usersRef = db.collection("users");
@@ -45,19 +48,37 @@ export async function POST(req: NextRequest) {
         });
 
         // Reassign pre-multi-account data (records without a userId) to the admin.
+        // Firestore `== null` only matches fields that are explicitly null, so
+        // legacy docs that predate the userId field entirely would be skipped by
+        // such a query. Scan by institution and match missing/null userId in code,
+        // paginating so the migration covers more than the first 500 records.
         let reassigned = 0;
         for (const collection of ["citizens", "sms_logs", "groups"]) {
             try {
-                const orphaned = await db
-                    .collection(collection)
-                    .where("userId", "==", null)
-                    .limit(500)
-                    .get();
-                if (!orphaned.empty) {
-                    const batch = db.batch();
-                    orphaned.docs.forEach((d) => batch.update(d.ref, { userId: uid }));
-                    await batch.commit();
-                    reassigned += orphaned.size;
+                let lastDoc: FirebaseFirestore.DocumentSnapshot | undefined;
+                for (;;) {
+                    let q = db
+                        .collection(collection)
+                        .where("institutionId", "==", "nnlomne")
+                        .orderBy("__name__")
+                        .limit(500);
+                    if (lastDoc) q = q.startAfter(lastDoc);
+                    const snap = await q.get();
+                    if (snap.empty) break;
+
+                    const orphaned = snap.docs.filter((d) => {
+                        const userId = d.data().userId;
+                        return userId === undefined || userId === null;
+                    });
+                    if (orphaned.length > 0) {
+                        const batch = db.batch();
+                        orphaned.forEach((d) => batch.update(d.ref, { userId: uid }));
+                        await batch.commit();
+                        reassigned += orphaned.length;
+                    }
+
+                    lastDoc = snap.docs[snap.docs.length - 1];
+                    if (snap.docs.length < 500) break;
                 }
             } catch {
                 /* missing index / no such collection — best effort */

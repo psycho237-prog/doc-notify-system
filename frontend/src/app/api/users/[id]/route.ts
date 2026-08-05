@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuth } from "firebase-admin/auth";
 import { getAdminApp, getAdminDB, isAdminConfigured } from "@/lib/firebase-admin";
+import { forbidden, requireAuth } from "@/lib/api-auth";
 
-/** PATCH /api/users/[id] — update name / role / password (reset). */
+/** PATCH /api/users/[id] — update name / role / password (super admin only). */
 export async function PATCH(
     req: NextRequest,
     { params }: { params: { id: string } }
@@ -10,6 +11,8 @@ export async function PATCH(
     if (!isAdminConfigured()) {
         return NextResponse.json({ error: "Firebase is not configured" }, { status: 503 });
     }
+    const session = await requireAuth(req, { admin: true });
+    if (!session) return forbidden();
     try {
         const id = params.id;
         const body = await req.json();
@@ -70,14 +73,16 @@ export async function PATCH(
     }
 }
 
-/** DELETE /api/users/[id] — delete the auth user, role doc and account data. */
+/** DELETE /api/users/[id] — delete the auth user, role doc and account data (super admin only). */
 export async function DELETE(
-    _req: NextRequest,
+    req: NextRequest,
     { params }: { params: { id: string } }
 ) {
     if (!isAdminConfigured()) {
         return NextResponse.json({ error: "Firebase is not configured" }, { status: 503 });
     }
+    const session = await requireAuth(req, { admin: true });
+    if (!session) return forbidden();
     try {
         const id = params.id;
         const app = getAdminApp();

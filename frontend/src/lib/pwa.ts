@@ -36,15 +36,17 @@ export function usePwaInstall() {
     const install = async (): Promise<boolean> => {
         const prompt = promptRef.current;
         if (!prompt) return false;
-        prompt.prompt();
+        let accepted = false;
         try {
-            await prompt.userChoice;
+            await prompt.prompt();
+            const { outcome } = await prompt.userChoice;
+            accepted = outcome === "accepted";
         } catch {
-            /* dismissed */
+            /* dismissed or threw */
         }
         promptRef.current = null;
         setCanInstall(false);
-        return true;
+        return accepted;
     };
 
     return { canInstall, install };

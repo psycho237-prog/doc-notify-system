@@ -133,14 +133,43 @@ function removeLS(key: string): void {
 
 /* ── API helpers (firebase mode) ─────────────────────────────────── */
 
+/**
+ * Returns the Firebase ID token when the app runs in firebase mode and the
+ * user is signed in. Returns null in local mode (no token — the server only
+ * requires authentication on fully configured deployments).
+ */
+async function getAuthToken(): Promise<string | null> {
+    if (getMode() !== "firebase") return null;
+    try {
+        const { auth } = await import("./firebase");
+        const user = auth.currentUser;
+        if (!user) return null;
+        return await user.getIdToken();
+    } catch {
+        return null;
+    }
+}
+
+/** fetch() that attaches the Firebase ID token when available. */
+async function apiFetch(url: string, init?: RequestInit): Promise<Response> {
+    const token = await getAuthToken();
+    if (!token) return fetch(url, init);
+    const headers = new Headers(init?.headers);
+    headers.set("Authorization", `Bearer ${token}`);
+    return fetch(url, { ...init, headers });
+}
+
 async function safeApi<T>(url: string, init?: RequestInit): Promise<T | null> {
     try {
-        const res = await fetch(url, init);
+        const res = await apiFetch(url, init);
         if (!res.ok) throw new Error(`API error ${res.status}`);
         return (await res.json()) as T;
     } catch (err) {
-        console.warn("[data] API unavailable, switching to local mode.", err);
-        cachedMode = "local";
+        // Fall back to the local store for THIS call only. Do not flip the
+        // app-wide mode: a transient network error or a real backend 500 must
+        // not silently switch the whole session from Firebase to localStorage
+        // (auth, seeding and the settings badge depend on the configured mode).
+        console.warn("[data] API unavailable, falling back to local data for this call.", err);
         return null;
     }
 }
@@ -155,7 +184,7 @@ async function apiWithStatus<T>(
     init?: RequestInit
 ): Promise<{ status: number; data: T | null }> {
     try {
-        const res = await fetch(url, init);
+        const res = await apiFetch(url, init);
         const data = (await res.json().catch(() => null)) as T | null;
         return { status: res.status, data };
     } catch (err) {
@@ -600,7 +629,7 @@ export async function deleteRecipients(ids: string[]): Promise<void> {
             )
         );
         if (results.some((r) => r !== null)) return; // deleted (at least partly) in Firestore
-        // all calls failed and we fell back to local mode
+        // all calls failed — fall back to local deletion for this batch
     }
     const list = readLS<Recipient[]>(uRecipients(uid), []);
     const toDelete = new Set(ids);
@@ -915,7 +944,7 @@ interface SendPayload {
 
 async function performSend(payload: SendPayload, allowQueue: boolean): Promise<SendSummary> {
     try {
-        const res = await fetch("/api/send-sms", {
+        const res = await apiFetch("/api/send-sms", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(payload),

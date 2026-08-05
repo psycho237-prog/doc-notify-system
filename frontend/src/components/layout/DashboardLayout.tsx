@@ -14,6 +14,7 @@ import {
     setLoggedOut,
 } from "@/lib/data";
 import { OfflineBanner } from "./OfflineBanner";
+import { InstallBanner } from "../pwa/InstallBanner";
 
 export function DashboardLayout({ children }: { children: ReactNode }) {
     const router = useRouter();
@@ -77,6 +78,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
                 </header>
 
                 <main className="flex-1 w-full max-w-3xl mx-auto px-4 py-5 md:px-10 md:py-10 pb-28 md:pb-12">
+                    <InstallBanner />
                     <OfflineBanner />
                     {children}
                 </main>
