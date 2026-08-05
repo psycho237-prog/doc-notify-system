@@ -1,5 +1,6 @@
 {
   "projects": {
+    "default": "nnlomne",
     "staging": "lichtenbergkamer-53791"
   },
   "targets": {},
