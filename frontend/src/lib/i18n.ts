@@ -152,6 +152,14 @@ export const translations = {
     settings_pw_wrong: { fr: "Mot de passe actuel incorrect", en: "Current password is incorrect" },
     settings_pw_error: { fr: "Échec de la mise à jour. Réessayez.", en: "Failed to update. Try again." },
     settings_pw_saved: { fr: "Mot de passe mis à jour ✓", en: "Password updated ✓" },
+    settings_migrate: { fr: "Réassigner les données existantes", en: "Reassign existing data" },
+    settings_migrate_desc: { fr: "Attribue les dossiers créés avant la mise à jour multi-comptes (sans userId) à votre compte super administrateur. Idempotent : les données déjà assignées ne sont pas touchées.", en: "Assigns records created before the multi-account update (no userId) to your super admin account. Idempotent: already-owned data is untouched." },
+    settings_migrate_btn: { fr: "Réassigner maintenant", en: "Reassign now" },
+    settings_migrate_confirm: { fr: "Réassigner toutes les données sans propriétaire à votre compte ?", en: "Reassign all ownerless records to your account?" },
+    settings_migrate_done: { fr: "Migration terminée : {n} enregistrement(s) réassigné(s).", en: "Migration complete: {n} record(s) reassigned." },
+    settings_migrate_partial: { fr: "Certaines collections ont échoué — consultez les journaux serveur.", en: "Some collections failed — check the server logs." },
+    settings_migrate_offline: { fr: "Hors ligne — impossible de joindre le serveur.", en: "Offline — cannot reach the server." },
+    settings_migrate_error: { fr: "Échec de la migration. Réessayez.", en: "Migration failed. Try again." },
 
     // ─── Navigation (multi-account) ──────────────────────────────────
     nav_groups: { fr: "Groupes", en: "Groups" },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDB, isAdminConfigured } from "@/lib/firebase-admin";
 import { requireAuth, unauthorized } from "@/lib/api-auth";
+import { LEGACY_COLLECTIONS, reassignOrphans } from "@/lib/legacy-migration";
 
 /**
  * POST /api/users/me — bootstrap the first super admin in Firebase mode.
@@ -8,8 +9,8 @@ import { requireAuth, unauthorized } from "@/lib/api-auth";
  * Called right after the client signs in. When the `users` collection is empty
  * (fresh Firestore) and the signed-in user is the default admin account, this
  * creates their `users` doc with role "superadmin" and reassigns the legacy
- * citizens/logs/groups that have no `userId` yet (pre-multi-account data) so
- * they land on the admin's account.
+ * records that have no `userId` yet (pre-multi-account data) so they land on
+ * the admin's account.
  */
 export async function POST(req: NextRequest) {
     if (!isAdminConfigured()) {
@@ -48,38 +49,12 @@ export async function POST(req: NextRequest) {
         });
 
         // Reassign pre-multi-account data (records without a userId) to the admin.
-        // Firestore `== null` only matches fields that are explicitly null, so
-        // legacy docs that predate the userId field entirely would be skipped by
-        // such a query. Scan by institution and match missing/null userId in code,
-        // paginating so the migration covers more than the first 500 records.
+        // Matches missing AND null userId fields in code (Firestore `== null`
+        // would miss legacy docs that predate the field entirely).
         let reassigned = 0;
-        for (const collection of ["citizens", "sms_logs", "groups"]) {
+        for (const collection of LEGACY_COLLECTIONS) {
             try {
-                let lastDoc: FirebaseFirestore.DocumentSnapshot | undefined;
-                for (;;) {
-                    let q = db
-                        .collection(collection)
-                        .where("institutionId", "==", "nnlomne")
-                        .orderBy("__name__")
-                        .limit(500);
-                    if (lastDoc) q = q.startAfter(lastDoc);
-                    const snap = await q.get();
-                    if (snap.empty) break;
-
-                    const orphaned = snap.docs.filter((d) => {
-                        const userId = d.data().userId;
-                        return userId === undefined || userId === null;
-                    });
-                    if (orphaned.length > 0) {
-                        const batch = db.batch();
-                        orphaned.forEach((d) => batch.update(d.ref, { userId: uid }));
-                        await batch.commit();
-                        reassigned += orphaned.length;
-                    }
-
-                    lastDoc = snap.docs[snap.docs.length - 1];
-                    if (snap.docs.length < 500) break;
-                }
+                reassigned += await reassignOrphans(db, collection, uid);
             } catch {
                 /* missing index / no such collection — best effort */
             }

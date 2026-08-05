@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import {
     Building2,
     Database,
+    DatabaseBackup,
     FlaskConical,
     Languages,
     KeyRound,
@@ -25,6 +26,7 @@ import {
     getMode,
     getSettings,
     isSuperAdminAsync,
+    migrateLegacyData,
     saveSettings,
     setCleanupAfterSend,
     setLocalPassword,
@@ -47,6 +49,9 @@ export default function SettingsPage() {
     const [cleanup, setCleanup] = useState(true);
     const [installed, setInstalled] = useState(false);
     const { canInstall, install } = usePwaInstall();
+    const [migrating, setMigrating] = useState(false);
+    const [migrateResult, setMigrateResult] = useState("");
+    const [migrateError, setMigrateError] = useState("");
 
     useEffect(() => {
         setSettings(getSettings());
@@ -65,6 +70,26 @@ export default function SettingsPage() {
     }
 
     const isLocalMode = getMode() === "local";
+
+    const handleMigrate = async () => {
+        if (!confirm(t("settings_migrate_confirm"))) return;
+        setMigrating(true);
+        setMigrateError("");
+        setMigrateResult("");
+        try {
+            const { migrated, errors } = await migrateLegacyData();
+            const total = Object.values(migrated).reduce((a, b) => a + b, 0);
+            setMigrateResult(t("settings_migrate_done").replace("{n}", String(total)));
+            if (errors.length > 0) setMigrateError(t("settings_migrate_partial"));
+        } catch (err) {
+            const code = (err as Error)?.message;
+            setMigrateError(
+                code === "offline" ? t("settings_migrate_offline") : t("settings_migrate_error")
+            );
+        } finally {
+            setMigrating(false);
+        }
+    };
 
     const handleSave = async () => {
         setSaving(true);
@@ -209,6 +234,40 @@ export default function SettingsPage() {
                                 )}
                             />
                         </button>
+                    </div>
+                )}
+
+                {/* Legacy data migration (super admin + firebase mode) */}
+                {isAdmin && !isLocalMode && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                        <p className="flex items-center gap-2 text-sm font-black text-gray-900 mb-1">
+                            <DatabaseBackup className="w-4 h-4 text-[#1e3a8a]" /> {t("settings_migrate")}
+                        </p>
+                        <p className="text-xs text-gray-400 font-medium mb-3">
+                            {t("settings_migrate_desc")}
+                        </p>
+                        <button
+                            onClick={handleMigrate}
+                            disabled={migrating}
+                            className="w-full flex items-center justify-center gap-2 text-xs font-black text-white bg-[#1e3a8a] hover:bg-blue-900 py-3 rounded-xl transition-all active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+                        >
+                            {migrating ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                                <DatabaseBackup className="w-4 h-4" />
+                            )}
+                            {t("settings_migrate_btn")}
+                        </button>
+                        {migrateError && (
+                            <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-xl px-3 py-2 font-medium mt-3">
+                                {migrateError}
+                            </p>
+                        )}
+                        {migrateResult && (
+                            <p className="text-xs text-green-700 bg-green-50 border border-green-100 rounded-xl px-3 py-2 font-bold mt-3">
+                                {migrateResult}
+                            </p>
+                        )}
                     </div>
                 )}
 

@@ -382,6 +382,24 @@ export async function bootstrapFirebaseAdmin(): Promise<void> {
     }
 }
 
+/**
+ * Firebase mode: one-off migration — reassigns legacy records (no userId) to
+ * the calling super admin. Idempotent; safe to run multiple times.
+ */
+export async function migrateLegacyData(): Promise<{
+    migrated: Record<string, number>;
+    errors: string[];
+}> {
+    const { status, data } = await apiWithStatus<{
+        migrated?: Record<string, number>;
+        errors?: string[];
+    }>("/api/migrate", { method: "POST" });
+    if (status === 0) throw new Error("offline");
+    if (status === 401 || status === 403) throw new Error("forbidden");
+    if (status !== 200) throw new Error("migrate_failed");
+    return { migrated: data?.migrated ?? {}, errors: data?.errors ?? [] };
+}
+
 /** Creates a new account (both modes). */
 export async function createUserAccount(input: {
     name: string;
