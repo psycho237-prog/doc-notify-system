@@ -40,10 +40,11 @@ export async function POST(req: NextRequest) {
         } catch {
             return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
         }
-        const { recipients, message, simulate } = body as {
+        const { recipients, message, simulate, userId } = body as {
             recipients?: IncomingRecipient[];
             message?: string;
             simulate?: boolean;
+            userId?: string;
         };
 
         if (!Array.isArray(recipients) || recipients.length === 0) {
@@ -149,6 +150,7 @@ export async function POST(req: NextRequest) {
                         status: r.status,
                         error: r.error ?? null,
                         institutionId: "nnlomne",
+                        userId: userId ?? null,
                         sentAt: FieldValue.serverTimestamp(),
                     });
                 }

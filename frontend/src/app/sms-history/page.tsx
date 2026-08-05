@@ -8,11 +8,14 @@ import {
     XCircle,
     History,
     Loader2,
+    FileText,
+    Clock,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { useTranslation } from "@/lib/lang-context";
 import { getLogs } from "@/lib/data";
 import { downloadCsv, todayStamp } from "@/lib/csv";
+import { downloadSmsReportPdf, formatPdfDate } from "@/lib/pdf";
 import type { SmsLog } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -58,6 +61,47 @@ export default function SMSHistoryPage() {
         downloadCsv(`sms_logs_${todayStamp()}.csv`, headers, rows);
     };
 
+    const handleExportPdf = () => {
+        const rows = filteredLogs.map((l) => {
+            const { date, time } = formatPdfDate(l.sentAt);
+            return {
+                name: l.name,
+                phone: l.phone,
+                date,
+                time,
+                message: l.message,
+                status: l.status === "queued" ? ("queued" as const) : l.status === "failed" ? ("failed" as const) : ("sent" as const),
+            };
+        });
+        const institution = "NNLOMNE Administrative";
+        downloadSmsReportPdf(`rapport_sms_${todayStamp()}.pdf`, {
+            institution,
+            account: institution,
+            period: t("reports_period_all"),
+            generatedAt: `${t("pdf_generated")} ${new Date().toLocaleString(
+                lang === "fr" ? "fr-FR" : "en-GB",
+                { dateStyle: "short", timeStyle: "short" }
+            )}`,
+            rows,
+            labels: {
+                report: t("pdf_report"),
+                accountLabel: t("pdf_account"),
+                periodLabel: t("pdf_period"),
+                generatedLabel: t("pdf_generated"),
+                page: t("pdf_page"),
+                status: t("pdf_status"),
+                name: t("pdf_name"),
+                phone: t("pdf_phone"),
+                date: t("pdf_date"),
+                time: t("pdf_time"),
+                message: t("pdf_message"),
+                sent: t("pdf_status_sent"),
+                failed: t("pdf_status_failed"),
+                queued: t("pdf_status_queued"),
+            },
+        });
+    };
+
     const formatDate = (iso: string) => {
         const d = new Date(iso);
         if (Number.isNaN(d.getTime())) return "—";
@@ -80,13 +124,22 @@ export default function SMSHistoryPage() {
                     <h1 className="text-2xl font-black text-gray-900 tracking-tight">{t("hist_title")}</h1>
                     <p className="text-sm text-gray-500 font-medium mt-1">{t("hist_subtitle")}</p>
                 </div>
-                <button
-                    onClick={handleExport}
-                    disabled={filteredLogs.length === 0}
-                    className="flex items-center gap-1.5 text-xs font-black text-[#1e3a8a] bg-white border border-gray-200 rounded-xl px-3 py-2.5 shadow-sm transition-all hover:bg-blue-50 active:scale-95 disabled:opacity-40 disabled:pointer-events-none flex-shrink-0"
-                >
-                    <Download className="w-4 h-4" /> {t("hist_export")}
-                </button>
+                <div className="flex gap-2 flex-shrink-0">
+                    <button
+                        onClick={handleExportPdf}
+                        disabled={filteredLogs.length === 0}
+                        className="flex items-center gap-1.5 text-xs font-black text-white bg-[#1e3a8a] rounded-xl px-3 py-2.5 shadow-md shadow-blue-900/20 transition-all hover:bg-blue-900 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                        <FileText className="w-4 h-4" /> {t("hist_export_pdf")}
+                    </button>
+                    <button
+                        onClick={handleExport}
+                        disabled={filteredLogs.length === 0}
+                        className="flex items-center gap-1.5 text-xs font-black text-[#1e3a8a] bg-white border border-gray-200 rounded-xl px-3 py-2.5 shadow-sm transition-all hover:bg-blue-50 active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                        <Download className="w-4 h-4" /> {t("hist_export")}
+                    </button>
+                </div>
             </div>
 
             {/* Search + filters */}
@@ -142,6 +195,8 @@ export default function SMSHistoryPage() {
                             <div className="flex items-center gap-3">
                                 {log.status === "sent" ? (
                                     <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+                                ) : log.status === "queued" ? (
+                                    <Clock className="w-5 h-5 text-amber-500 flex-shrink-0" />
                                 ) : (
                                     <XCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
                                 )}
@@ -154,10 +209,16 @@ export default function SMSHistoryPage() {
                                         "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border",
                                         log.status === "sent"
                                             ? "bg-green-50 text-green-700 border-green-100"
-                                            : "bg-red-50 text-red-600 border-red-100"
+                                            : log.status === "queued"
+                                              ? "bg-amber-50 text-amber-700 border-amber-100"
+                                              : "bg-red-50 text-red-600 border-red-100"
                                     )}
                                 >
-                                    {log.status === "sent" ? t("hist_sent") : t("hist_failed")}
+                                    {log.status === "sent"
+                                        ? t("hist_sent")
+                                        : log.status === "queued"
+                                          ? t("hist_status_queued")
+                                          : t("hist_failed")}
                                 </span>
                             </div>
                             {log.message && (

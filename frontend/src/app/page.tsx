@@ -4,12 +4,16 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Lock, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { useTranslation } from "@/lib/lang-context";
-import { getLocalPassword, getMode, setLoggedIn } from "@/lib/data";
-
-const DEMO_EMAIL = "admin@nnlomne.gov";
+import {
+    bootstrapFirebaseAdmin,
+    getMode,
+    getUsersAsync,
+    loginUser,
+    setLoggedIn,
+} from "@/lib/data";
 
 export default function LoginPage() {
     const [email, setEmail] = useState("");
@@ -28,17 +32,26 @@ export default function LoginPage() {
 
         try {
             if (isFirebaseMode) {
-                await signInWithEmailAndPassword(auth, email, password);
-            } else {
-                // Local demo mode: fixed admin email, password changeable from Settings.
-                if (email.trim().toLowerCase() !== DEMO_EMAIL || password !== getLocalPassword()) {
-                    throw new Error("invalid");
+                const cred = await signInWithEmailAndPassword(auth, email, password);
+                // First sign-in promotes the default admin and migrates legacy data.
+                await bootstrapFirebaseAdmin();
+                // Locked accounts cannot sign in even with valid credentials.
+                const users = await getUsersAsync();
+                const account = users.find((u) => u.id === cred.user.uid);
+                if (account?.disabled) {
+                    await signOut(auth).catch(() => {});
+                    throw new Error("disabled");
                 }
+                setLoggedIn(cred.user.uid);
+            } else {
+                // Local mode: any account created by the super admin can log in.
+                const user = loginUser(email, password);
+                if (!user) throw new Error("invalid");
             }
-            setLoggedIn();
             router.push("/dashboard");
-        } catch {
-            setError(isFirebaseMode ? t("login_error_firebase") : t("login_error"));
+        } catch (err) {
+            if ((err as Error)?.message === "disabled") setError(t("login_error_disabled"));
+            else setError(isFirebaseMode ? t("login_error_firebase") : t("login_error"));
         } finally {
             setLoading(false);
         }
@@ -125,6 +138,12 @@ export default function LoginPage() {
                         >
                             {loading ? t("login_loading") : t("login_btn")}
                         </Button>
+
+                        {!isFirebaseMode && (
+                            <p className="text-center text-[11px] text-gray-400 font-medium pt-1">
+                                {t("login_default_hint")}
+                            </p>
+                        )}
 
                         <div className="pt-2 flex items-center justify-center gap-2 text-gray-400 text-xs border-t border-gray-100">
                             <Lock className="w-3.5 h-3.5" />

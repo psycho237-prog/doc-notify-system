@@ -11,16 +11,22 @@ import {
     Save,
     Loader2,
     CheckCircle2,
+    Smartphone,
+    Download,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/lib/lang-context";
+import { usePwaInstall } from "@/lib/pwa";
 import {
     checkLocalPassword,
     clearLocalData,
+    getCleanupAfterSend,
     getMode,
     getSettings,
+    isSuperAdminAsync,
     saveSettings,
+    setCleanupAfterSend,
     setLocalPassword,
 } from "@/lib/data";
 import type { Settings as AppSettings } from "@/lib/types";
@@ -37,9 +43,15 @@ export default function SettingsPage() {
     const [pwBusy, setPwBusy] = useState(false);
     const [pwError, setPwError] = useState("");
     const [pwSuccess, setPwSuccess] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(false);
+    const [cleanup, setCleanup] = useState(true);
+    const [installed, setInstalled] = useState(false);
+    const { canInstall, install } = usePwaInstall();
 
     useEffect(() => {
         setSettings(getSettings());
+        setCleanup(getCleanupAfterSend());
+        isSuperAdminAsync().then(setIsAdmin);
     }, []);
 
     if (!settings) {
@@ -161,6 +173,77 @@ export default function SettingsPage() {
                     >
                         {isLocalMode ? t("settings_mode_local") : t("settings_mode_firebase")}
                     </div>
+                </div>
+
+                {/* Cleanup (super admin only) */}
+                {isAdmin && (
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+                            <Trash2 className="w-5 h-5 text-[#1e3a8a]" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-black text-gray-900">{t("settings_cleanup")}</p>
+                            <p className="text-xs text-gray-400 font-medium mt-0.5">
+                                {t("settings_cleanup_desc")}
+                            </p>
+                            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mt-1">
+                                {t("settings_cleanup_admin_only")}
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                const next = !cleanup;
+                                setCleanup(next);
+                                setCleanupAfterSend(next);
+                            }}
+                            className={cn(
+                                "relative w-12 h-7 rounded-full transition-colors flex-shrink-0",
+                                cleanup ? "bg-[#1e3a8a]" : "bg-gray-200"
+                            )}
+                            aria-pressed={cleanup}
+                        >
+                            <span
+                                className={cn(
+                                    "absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform",
+                                    cleanup ? "left-[22px]" : "left-0.5"
+                                )}
+                            />
+                        </button>
+                    </div>
+                )}
+
+                {/* PWA install */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
+                    <p className="flex items-center gap-2 text-sm font-black text-gray-900 mb-1">
+                        <Smartphone className="w-4 h-4 text-[#1e3a8a]" /> {t("settings_pwa")}
+                    </p>
+                    <p className="text-xs text-gray-400 font-medium mb-3">{t("settings_pwa_desc")}</p>
+                    <button
+                        onClick={async () => {
+                            const ok = await install();
+                            if (ok) {
+                                setInstalled(true);
+                                setTimeout(() => setInstalled(false), 3000);
+                            }
+                        }}
+                        disabled={!canInstall}
+                        className="w-full flex items-center justify-center gap-2 text-xs font-black text-white bg-gray-900 hover:bg-gray-800 py-3 rounded-xl transition-all active:scale-[0.98] disabled:opacity-40 disabled:pointer-events-none"
+                    >
+                        {installed ? (
+                            <>
+                                <CheckCircle2 className="w-4 h-4" /> {t("settings_pwa_installed")}
+                            </>
+                        ) : (
+                            <>
+                                <Download className="w-4 h-4" /> {t("settings_pwa_install")}
+                            </>
+                        )}
+                    </button>
+                    {!canInstall && !installed && (
+                        <p className="text-[10px] text-gray-400 font-medium mt-2">
+                            {t("settings_pwa_unsupported")}
+                        </p>
+                    )}
                 </div>
 
                 {/* Simulation */}

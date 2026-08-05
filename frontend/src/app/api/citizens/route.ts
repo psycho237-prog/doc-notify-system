@@ -14,6 +14,9 @@ export async function GET(req: NextRequest) {
         const db = getAdminDB();
         let query = db.collection("citizens").where("institutionId", "==", institutionId) as FirebaseFirestore.Query;
 
+        const userId = searchParams.get("userId");
+        if (userId) query = query.where("userId", "==", userId);
+
         const status = searchParams.get("status");
         if (status && status !== "all") query = query.where("status", "==", status);
 
@@ -48,7 +51,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { fullName, phoneNumber, language, service, requestType, status, institutionId } = body;
+        const { fullName, phoneNumber, language, service, requestType, status, institutionId, userId } = body;
 
         if (!fullName || !phoneNumber || !institutionId) {
             return NextResponse.json({ error: "fullName, phoneNumber and institutionId are required" }, { status: 400 });
@@ -63,6 +66,7 @@ export async function POST(req: NextRequest) {
             requestType: requestType ?? "",
             status: status ?? "pending",
             institutionId,
+            userId: userId ?? null,
             createdAt: FieldValue.serverTimestamp(),
         });
 

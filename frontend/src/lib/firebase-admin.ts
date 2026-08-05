@@ -18,7 +18,7 @@ export function isAdminConfigured(): boolean {
     }
 }
 
-function getAdminApp(): App {
+export function getAdminApp(): App {
     if (getApps().length === 0) {
         const serviceAccount = JSON.parse(
             process.env.FIREBASE_SERVICE_ACCOUNT_JSON || "{}"

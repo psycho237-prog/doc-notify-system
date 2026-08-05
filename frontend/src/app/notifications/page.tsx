@@ -24,8 +24,14 @@ import {
     removeRecipientLine,
     sanitizeSmsMessage,
 } from "@/lib/phone-utils";
-import { getRecipients, getSettings, sendSms, takePendingSelection } from "@/lib/data";
-import type { SendSummary } from "@/lib/types";
+import {
+    getGroups,
+    getRecipients,
+    getSettings,
+    sendSms,
+    takePendingSelection,
+} from "@/lib/data";
+import type { Group, SendSummary } from "@/lib/types";
 
 const DEFAULT_MESSAGE =
     "Bonjour {name}, votre document est disponible. Merci de vous presenter au guichet pour le retirer.";
@@ -44,6 +50,8 @@ export default function NotificationsPage() {
     const [pendingContacts, setPendingContacts] = useState<
         { name: string; phone: string }[]
     >([]);
+    const [groups, setGroups] = useState<Group[]>([]);
+    const [groupChoice, setGroupChoice] = useState("");
 
     useEffect(() => {
         // Preload recipients selected on the Contacts page (if any).
@@ -54,6 +62,7 @@ export default function NotificationsPage() {
             setBulkText(lines.join("\n") + "\n");
         }
         setSimulate(getSettings().simulateSms);
+        getGroups().then(setGroups);
     }, []);
 
     /* ── Recipients ─────────────────────────────────────────────── */
@@ -91,6 +100,19 @@ export default function NotificationsPage() {
         const lines = contacts
             .filter((c) => !existing.has(formatCamPhone(c.phone)))
             .map((c) => `${c.name}; ${c.phone}`);
+        if (lines.length > 0) {
+            setBulkText((prev) => (prev ? `${prev.trimEnd()}\n` : "") + lines.join("\n") + "\n");
+        }
+    };
+
+    /** Loads the members of a group into the recipients list. */
+    const loadGroup = (groupId: string) => {
+        const group = groups.find((g) => g.id === groupId);
+        if (!group || group.members.length === 0) return;
+        const existing = new Set(parsed.map((p) => formatCamPhone(p.phone)));
+        const lines = group.members
+            .filter((m) => !existing.has(formatCamPhone(m.phone)))
+            .map((m) => `${m.name}; ${m.phone}`);
         if (lines.length > 0) {
             setBulkText((prev) => (prev ? `${prev.trimEnd()}\n` : "") + lines.join("\n") + "\n");
         }
@@ -145,6 +167,7 @@ export default function NotificationsPage() {
 
     if (result) {
         const failures = result.results.filter((r) => r.status === "failed");
+        const queued = result.queued ?? 0;
         return (
             <DashboardLayout>
                 <div className="pt-2">
@@ -152,7 +175,7 @@ export default function NotificationsPage() {
                         {t("notif_result_title")}
                     </h1>
 
-                    <div className="grid grid-cols-2 gap-3 mb-6">
+                    <div className="grid grid-cols-2 gap-3 mb-4">
                         <div className="bg-green-50 border border-green-100 rounded-2xl p-4 text-center">
                             <CheckCircle2 className="w-6 h-6 text-green-600 mx-auto mb-1.5" />
                             <p className="text-3xl font-black text-green-700 leading-none">{result.sent}</p>
@@ -168,6 +191,20 @@ export default function NotificationsPage() {
                             </p>
                         </div>
                     </div>
+
+                    {queued > 0 && (
+                        <div className="flex items-center gap-2.5 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold rounded-2xl px-4 py-3 mb-4">
+                            <FlaskConical className="w-4 h-4 flex-shrink-0" />
+                            {t("offline_pending").replace("{n}", String(queued))}
+                        </div>
+                    )}
+
+                    {result.cleaned && result.cleaned > 0 && (
+                        <div className="flex items-center gap-2.5 bg-blue-50 border border-blue-100 text-blue-800 text-xs font-bold rounded-2xl px-4 py-3 mb-4">
+                            <CheckCircle2 className="w-4 h-4 text-[#1e3a8a] flex-shrink-0" />
+                            {t("notif_cleaned").replace("{n}", String(result.cleaned))}
+                        </div>
+                    )}
 
                     {failures.length > 0 && (
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-6">
@@ -286,10 +323,32 @@ export default function NotificationsPage() {
                         )}
                         <button
                             onClick={loadContacts}
-                            className="ml-auto flex items-center gap-1.5 text-[11px] font-black text-[#1e3a8a] bg-blue-50 border border-blue-100 rounded-lg px-3 py-1.5 transition-all hover:bg-blue-100 active:scale-95"
+                            className="flex items-center gap-1.5 text-[11px] font-black text-[#1e3a8a] bg-blue-50 border border-blue-100 rounded-lg px-3 py-1.5 transition-all hover:bg-blue-100 active:scale-95"
                         >
                             <Users className="w-3.5 h-3.5" /> {t("notif_load_contacts")}
                         </button>
+                        {groups.length > 0 && (
+                            <select
+                                value={groupChoice}
+                                onChange={(e) => {
+                                    const value = e.target.value;
+                                    setGroupChoice(value);
+                                    if (value) {
+                                        loadGroup(value);
+                                        setGroupChoice("");
+                                    }
+                                }}
+                                className="text-[11px] font-black text-[#1e3a8a] bg-white border border-blue-100 rounded-lg px-2.5 py-1.5 transition-all hover:bg-blue-50 focus:outline-none cursor-pointer"
+                                aria-label={t("groups_load_hint")}
+                            >
+                                <option value="">{t("groups_load_hint")}</option>
+                                {groups.map((g) => (
+                                    <option key={g.id} value={g.id}>
+                                        {g.name} ({g.members.length})
+                                    </option>
+                                ))}
+                            </select>
+                        )}
                         {bulkText && (
                             <button
                                 onClick={() => {

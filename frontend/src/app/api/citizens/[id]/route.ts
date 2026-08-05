@@ -43,8 +43,10 @@ export async function DELETE(
         if (!snap.exists) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
         // Copy to audit trail before deleting
+        const { searchParams } = new URL(req.url);
         await db.collection("deleted_citizens").doc(params.id).set({
             ...snap.data(),
+            userId: searchParams.get("userId") ?? snap.data()?.userId ?? null,
             deletedAt: new Date().toISOString(),
         });
 

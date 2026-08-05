@@ -13,6 +13,9 @@ export async function GET(req: NextRequest) {
         const db = getAdminDB();
         let query = db.collection("sms_logs").where("institutionId", "==", institutionId) as FirebaseFirestore.Query;
 
+        const userId = searchParams.get("userId");
+        if (userId) query = query.where("userId", "==", userId);
+
         const status = searchParams.get("status");
         if (status && status !== "all") query = query.where("status", "==", status);
 

@@ -6,20 +6,18 @@ import { Bell, LogOut } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { MobileNav } from "./MobileNav";
 import { useTranslation } from "@/lib/lang-context";
-import { getMode, isLoggedIn, seedLocalData, setLoggedOut } from "@/lib/data";
+import {
+    getMode,
+    isCurrentUserDisabled,
+    isLoggedIn,
+    seedLocalData,
+    setLoggedOut,
+} from "@/lib/data";
+import { OfflineBanner } from "./OfflineBanner";
 
 export function DashboardLayout({ children }: { children: ReactNode }) {
     const router = useRouter();
     const { t } = useTranslation();
-
-    useEffect(() => {
-        if (!isLoggedIn()) {
-            router.replace("/");
-            return;
-        }
-        // Seed demo contacts once (no-op if already seeded / firebase mode).
-        seedLocalData();
-    }, [router]);
 
     const handleLogout = async () => {
         if (getMode() === "firebase") {
@@ -34,6 +32,22 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         setLoggedOut();
         router.push("/");
     };
+
+    useEffect(() => {
+        if (!isLoggedIn()) {
+            router.replace("/");
+            return;
+        }
+        // A freshly locked account is signed out on next navigation.
+        isCurrentUserDisabled().then((locked) => {
+            if (locked) {
+                handleLogout();
+            }
+        });
+        // Seed demo contacts once (no-op if already seeded / firebase mode).
+        seedLocalData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [router]);
 
     return (
         <div className="min-h-screen bg-[#f8fafc] md:flex font-sans selection:bg-blue-100 selection:text-blue-900">
@@ -63,6 +77,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
                 </header>
 
                 <main className="flex-1 w-full max-w-3xl mx-auto px-4 py-5 md:px-10 md:py-10 pb-28 md:pb-12">
+                    <OfflineBanner />
                     {children}
                 </main>
             </div>

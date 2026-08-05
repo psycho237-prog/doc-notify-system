@@ -11,35 +11,29 @@ export async function GET(req: NextRequest) {
         }
 
         const db = getAdminDB();
-        const base = db.collection("citizens").where("institutionId", "==", institutionId);
+        const userId = searchParams.get("userId");
+        const byUser = (q: FirebaseFirestore.Query) =>
+            userId ? (q.where("userId", "==", userId) as FirebaseFirestore.Query) : q;
+        const base = byUser(
+            db.collection("citizens").where("institutionId", "==", institutionId)
+        );
+        const logsBase = db.collection("sms_logs").where("institutionId", "==", institutionId) as FirebaseFirestore.Query;
 
         const [total, processing, ready, smsTodaySnap, smsTotalSnap, smsFailedSnap] = await Promise.all([
             base.count().get(),
-            base.where("status", "==", "processing").count().get(),
-            base.where("status", "==", "ready").count().get(),
+            byUser(base.where("status", "==", "processing")).count().get(),
+            byUser(base.where("status", "==", "ready")).count().get(),
             (() => {
                 const midnight = new Date();
                 midnight.setHours(0, 0, 0, 0);
-                return db
-                    .collection("sms_logs")
-                    .where("institutionId", "==", institutionId)
-                    .where("status", "==", "sent")
-                    .where("sentAt", ">=", midnight)
+                return byUser(
+                    logsBase.where("status", "==", "sent").where("sentAt", ">=", midnight)
+                )
                     .count()
                     .get();
             })(),
-            db
-                .collection("sms_logs")
-                .where("institutionId", "==", institutionId)
-                .where("status", "==", "sent")
-                .count()
-                .get(),
-            db
-                .collection("sms_logs")
-                .where("institutionId", "==", institutionId)
-                .where("status", "==", "failed")
-                .count()
-                .get(),
+            byUser(logsBase.where("status", "==", "sent")).count().get(),
+            byUser(logsBase.where("status", "==", "failed")).count().get(),
         ]);
 
         // 5 most recent dossiers
