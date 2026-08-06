@@ -64,12 +64,23 @@ export default function LoginPage() {
         setLoading(true);
         setError("");
 
-        if (typeof navigator !== "undefined" && !navigator.onLine) {
-            handleOfflineAccess();
-            return;
-        }
-
         try {
+            if (typeof navigator !== "undefined" && !navigator.onLine) {
+                if (email && password) {
+                    try {
+                        const user = loginUser(email, password);
+                        if (user) {
+                            router.push("/dashboard");
+                            return;
+                        }
+                    } catch (err) {
+                        if ((err as Error)?.message === "disabled") throw err;
+                    }
+                }
+                handleOfflineAccess();
+                return;
+            }
+
             if (isFirebaseMode) {
                 try {
                     const cred = await signInWithEmailAndPassword(auth, email, password);
@@ -87,19 +98,30 @@ export default function LoginPage() {
                     const msg = (firebaseErr as Error)?.message || "";
                     if (msg === "disabled") throw firebaseErr;
 
-                    // If offline or network error occurs during Firebase sign-in, allow offline login
+                    // If offline or network error occurs during Firebase sign-in, attempt local user auth first
                     if (
                         (typeof navigator !== "undefined" && !navigator.onLine) ||
                         msg.includes("network") ||
                         msg.includes("offline")
                     ) {
+                        if (email && password) {
+                            try {
+                                const user = loginUser(email, password);
+                                if (user) {
+                                    router.push("/dashboard");
+                                    return;
+                                }
+                            } catch (err) {
+                                if ((err as Error)?.message === "disabled") throw err;
+                            }
+                        }
                         handleOfflineAccess();
                         return;
                     }
                     throw firebaseErr;
                 }
             } else {
-                // Local mode: any account created by the super admin can log in.
+                // Local mode: any account created by the super admin can log in with its exact role.
                 const user = loginUser(email, password);
                 if (!user) throw new Error("invalid");
             }
