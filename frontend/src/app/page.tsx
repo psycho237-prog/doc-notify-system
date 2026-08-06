@@ -37,11 +37,9 @@ export default function LoginPage() {
         const checkOffline = () => {
             const offline = typeof navigator !== "undefined" && !navigator.onLine;
             setIsOffline(offline);
-            if (offline) {
-                // When in PWA / offline mode, auto-login and redirect to dashboard so login is not blocked.
-                setLoggedIn();
-                router.replace("/dashboard");
-            }
+            // Only auto-redirect offline if a session already exists for a specific user.
+            // isLoggedIn() was already checked above; at this point there is no session,
+            // so we just show the offline notice without granting any access.
         };
 
         checkOffline();
@@ -54,11 +52,6 @@ export default function LoginPage() {
         };
     }, [router]);
 
-    const handleOfflineAccess = () => {
-        setLoggedIn();
-        router.push("/dashboard");
-    };
-
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -66,6 +59,7 @@ export default function LoginPage() {
 
         try {
             if (typeof navigator !== "undefined" && !navigator.onLine) {
+                // Offline: always try credential match first so the correct user/role is used.
                 if (email && password) {
                     try {
                         const user = loginUser(email, password);
@@ -77,8 +71,8 @@ export default function LoginPage() {
                         if ((err as Error)?.message === "disabled") throw err;
                     }
                 }
-                handleOfflineAccess();
-                return;
+                // No matching local account — refuse access; don't silently grant admin.
+                throw new Error("invalid");
             }
 
             if (isFirebaseMode) {
@@ -98,7 +92,7 @@ export default function LoginPage() {
                     const msg = (firebaseErr as Error)?.message || "";
                     if (msg === "disabled") throw firebaseErr;
 
-                    // If offline or network error occurs during Firebase sign-in, attempt local user auth first
+                    // Network/offline error → try local credentials with correct role.
                     if (
                         (typeof navigator !== "undefined" && !navigator.onLine) ||
                         msg.includes("network") ||
@@ -115,13 +109,13 @@ export default function LoginPage() {
                                 if ((err as Error)?.message === "disabled") throw err;
                             }
                         }
-                        handleOfflineAccess();
-                        return;
+                        // Still no match → refuse access.
+                        throw new Error("invalid");
                     }
                     throw firebaseErr;
                 }
             } else {
-                // Local mode: any account created by the super admin can log in with its exact role.
+                // Local mode: account logs in with its exact role (user or superadmin).
                 const user = loginUser(email, password);
                 if (!user) throw new Error("invalid");
             }
@@ -167,18 +161,11 @@ export default function LoginPage() {
                 </div>
 
                 {isOffline && (
-                    <div className="w-full bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col gap-3">
-                        <div className="flex items-center gap-2 text-amber-900 text-xs font-bold">
-                            <WifiOff className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                            <span>{t("login_offline_notice")}</span>
-                        </div>
-                        <Button
-                            type="button"
-                            onClick={handleOfflineAccess}
-                            className="w-full bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-xl text-xs font-black shadow-md transition-all active:scale-[0.98]"
-                        >
-                            {t("login_offline_btn")}
-                        </Button>
+                    <div className="w-full bg-amber-50 border border-amber-200 rounded-2xl p-3 flex items-center gap-2.5">
+                        <WifiOff className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                        <p className="text-xs font-bold text-amber-800 leading-tight">
+                            {t("login_offline_notice")}
+                        </p>
                     </div>
                 )}
 

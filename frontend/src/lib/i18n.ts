@@ -16,7 +16,7 @@ export const translations = {
     login_error: { fr: "E-mail ou mot de passe incorrect", en: "Invalid email or password" },
     login_error_firebase: { fr: "E-mail ou mot de passe incorrect", en: "Invalid email or password" },
     login_error_disabled: { fr: "Ce compte est verrouillé. Contactez l'administrateur.", en: "This account is locked. Contact the administrator." },
-    login_offline_notice: { fr: "Mode hors ligne détecté. L'accès direct sans connexion est activé.", en: "Offline mode detected. Direct offline access is enabled." },
+    login_offline_notice: { fr: "Mode hors ligne — saisissez vos identifiants pour accéder à vos données locales.", en: "You are offline — enter your credentials to access your local data." },
     login_offline_btn: { fr: "Accéder en mode hors ligne", en: "Access offline" },
     login_secure: { fr: "Accès réservé à l'administration", en: "Admin access only" },
     login_rights: { fr: "© 2026 Services Administratifs NNLOMNE.", en: "© 2026 NNLOMNE Administrative Services." },
