@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/lang-context";
-import { isSuperAdminAsync } from "@/lib/data";
+import { isSuperAdmin, isSuperAdminAsync } from "@/lib/data";
 
 const ICONS = {
     Home,
@@ -35,7 +35,7 @@ const EXTRA_HREFS = ["/users", "/reports", "/settings"];
 export function MobileNav() {
     const pathname = usePathname();
     const { t } = useTranslation();
-    const [isAdmin, setIsAdmin] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(() => isSuperAdmin());
     const [moreOpen, setMoreOpen] = useState(false);
 
     useEffect(() => {

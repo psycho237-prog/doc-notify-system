@@ -19,13 +19,13 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "@/lib/lang-context";
-import { getMode, isSuperAdminAsync, setLoggedOut } from "@/lib/data";
+import { getMode, isSuperAdmin, isSuperAdminAsync, setLoggedOut } from "@/lib/data";
 
 export function Sidebar() {
     const pathname = usePathname();
     const router = useRouter();
     const { t } = useTranslation();
-    const [isAdmin, setIsAdmin] = useState(false);
+    const [isAdmin, setIsAdmin] = useState(() => isSuperAdmin());
 
     useEffect(() => {
         let mounted = true;
