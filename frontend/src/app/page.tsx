@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Lock, Languages } from "lucide-react";
+import { Bell, Lock, Languages, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase";
@@ -11,6 +11,7 @@ import {
     bootstrapFirebaseAdmin,
     getMode,
     getUsersAsync,
+    isLoggedIn,
     loginUser,
     setLoggedIn,
 } from "@/lib/data";
@@ -20,29 +21,83 @@ export default function LoginPage() {
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [isOffline, setIsOffline] = useState(false);
     const router = useRouter();
     const { t, lang, setLang } = useTranslation();
 
     const isFirebaseMode = getMode() === "firebase";
+
+    useEffect(() => {
+        // If already authenticated (cached session in localStorage), go straight to dashboard.
+        if (isLoggedIn()) {
+            router.replace("/dashboard");
+            return;
+        }
+
+        const checkOffline = () => {
+            const offline = typeof navigator !== "undefined" && !navigator.onLine;
+            setIsOffline(offline);
+            if (offline) {
+                // When in PWA / offline mode, auto-login and redirect to dashboard so login is not blocked.
+                setLoggedIn();
+                router.replace("/dashboard");
+            }
+        };
+
+        checkOffline();
+
+        window.addEventListener("online", checkOffline);
+        window.addEventListener("offline", checkOffline);
+        return () => {
+            window.removeEventListener("online", checkOffline);
+            window.removeEventListener("offline", checkOffline);
+        };
+    }, [router]);
+
+    const handleOfflineAccess = () => {
+        setLoggedIn();
+        router.push("/dashboard");
+    };
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError("");
 
+        if (typeof navigator !== "undefined" && !navigator.onLine) {
+            handleOfflineAccess();
+            return;
+        }
+
         try {
             if (isFirebaseMode) {
-                const cred = await signInWithEmailAndPassword(auth, email, password);
-                // First sign-in promotes the default admin and migrates legacy data.
-                await bootstrapFirebaseAdmin();
-                // Locked accounts cannot sign in even with valid credentials.
-                const users = await getUsersAsync();
-                const account = users.find((u) => u.id === cred.user.uid);
-                if (account?.disabled) {
-                    await signOut(auth).catch(() => {});
-                    throw new Error("disabled");
+                try {
+                    const cred = await signInWithEmailAndPassword(auth, email, password);
+                    // First sign-in promotes the default admin and migrates legacy data.
+                    await bootstrapFirebaseAdmin();
+                    // Locked accounts cannot sign in even with valid credentials.
+                    const users = await getUsersAsync();
+                    const account = users.find((u) => u.id === cred.user.uid);
+                    if (account?.disabled) {
+                        await signOut(auth).catch(() => {});
+                        throw new Error("disabled");
+                    }
+                    setLoggedIn(cred.user.uid);
+                } catch (firebaseErr: unknown) {
+                    const msg = (firebaseErr as Error)?.message || "";
+                    if (msg === "disabled") throw firebaseErr;
+
+                    // If offline or network error occurs during Firebase sign-in, allow offline login
+                    if (
+                        (typeof navigator !== "undefined" && !navigator.onLine) ||
+                        msg.includes("network") ||
+                        msg.includes("offline")
+                    ) {
+                        handleOfflineAccess();
+                        return;
+                    }
+                    throw firebaseErr;
                 }
-                setLoggedIn(cred.user.uid);
             } else {
                 // Local mode: any account created by the super admin can log in.
                 const user = loginUser(email, password);
@@ -88,6 +143,22 @@ export default function LoginPage() {
                         {t("login_subtitle")}
                     </p>
                 </div>
+
+                {isOffline && (
+                    <div className="w-full bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col gap-3">
+                        <div className="flex items-center gap-2 text-amber-900 text-xs font-bold">
+                            <WifiOff className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                            <span>{t("login_offline_notice")}</span>
+                        </div>
+                        <Button
+                            type="button"
+                            onClick={handleOfflineAccess}
+                            className="w-full bg-amber-600 hover:bg-amber-700 text-white py-2.5 rounded-xl text-xs font-black shadow-md transition-all active:scale-[0.98]"
+                        >
+                            {t("login_offline_btn")}
+                        </Button>
+                    </div>
+                )}
 
                 <div className="w-full bg-white shadow-xl rounded-3xl p-6 border border-gray-100">
                     <form className="space-y-4" onSubmit={handleLogin}>
